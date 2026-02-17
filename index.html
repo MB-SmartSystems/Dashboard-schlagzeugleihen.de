@@ -1132,30 +1132,12 @@
         card.innerHTML = `
           <div class="aufgabe-card-header">
             <div>
-              <div class="aufgabe-title">${esc(kundeName)}</div>
+              <div class="aufgabe-title">${esc(kundeName)} <span style="color:var(--text-muted);font-size:0.8rem;font-weight:400;">· Miet-ID ${m.Miet_ID || m.id}</span></div>
               <div class="aufgabe-subtitle">${esc(produkte)}</div>
             </div>
             <span class="aufgabe-type ${istBestellt ? 'type-bestellen' : 'type-bereit'}">
-              ${istBestellt ? '🔴 Instrument bestellen' : '🟢 Bereit zur Übergabe'}
+              ${istBestellt ? '🔴 Bestellen' : '🟢 Bereit'}
             </span>
-          </div>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="dl">Monatspreis</span>
-              <span class="dv mono">${formatEuro(m.Preis_monat_EUR)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="dl">Kaution</span>
-              <span class="dv mono">${formatEuro(m.Kaution_EUR)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="dl">Laufzeit</span>
-              <span class="dv">${m.Laufzeit_Monate || '–'} Monate</span>
-            </div>
-            <div class="detail-item">
-              <span class="dl">Miet-ID</span>
-              <span class="dv mono">${m.Miet_ID || m.id}</span>
-            </div>
           </div>
           <div class="aufgabe-actions">
             ${actionsHTML}
