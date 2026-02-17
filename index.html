@@ -367,6 +367,25 @@
     border-color: var(--blue);
   }
 
+  .anfrage-text-box {
+    background: rgba(88, 166, 255, 0.06);
+    border: 1px solid rgba(88, 166, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .anfrage-text-label {
+    font-weight: 600;
+    color: var(--blue);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
   .anfrage-top {
     display: flex;
     justify-content: space-between;
@@ -910,6 +929,9 @@
 
         const entfernungDiff = plzEntfernung(HOME_PLZ, kundePLZ);
         const istWeit = entfernungDiff > 5;
+        const kundeTelefon = kunde.Telefon || '';
+        const kundeStrasse = kunde.Adresse_Strasse || '';
+        const anfrageText = a.Notizen || '';
 
         const card = document.createElement('div');
         card.className = 'anfrage-card';
@@ -922,6 +944,7 @@
             </div>
             <span class="miet-status status-offen">Offen</span>
           </div>
+          ${anfrageText ? `<div class="anfrage-text-box"><span class="anfrage-text-label">💬 Anliegen:</span> ${anfrageText}</div>` : ''}
           <div class="anfrage-details">
             <div class="miet-detail">
               <span class="dl">Monatspreis</span>
@@ -938,6 +961,14 @@
             <div class="miet-detail">
               <span class="dl">Email</span>
               <span class="dv">${kundeEmail}</span>
+            </div>
+            <div class="miet-detail">
+              <span class="dl">Telefon</span>
+              <span class="dv">${kundeTelefon || '–'}</span>
+            </div>
+            <div class="miet-detail">
+              <span class="dl">Adresse</span>
+              <span class="dv">${kundeStrasse ? kundeStrasse + ', ' : ''}${kundePLZ} ${kundeOrt}</span>
             </div>
             <div class="miet-detail">
               <span class="dl">Angebotsdatum</span>
