@@ -512,7 +512,7 @@
     opacity: 0.6;
   }
 
-  .btn-senden, .btn-ablehnen {
+  .btn-senden, .btn-ablehnen, .btn-angenommen {
     border: none;
     font-family: 'DM Sans', sans-serif;
     font-size: 0.8rem;
@@ -534,12 +534,30 @@
     color: #fff;
   }
 
-  .btn-senden:hover, .btn-ablehnen:hover { opacity: 0.8; }
+  .btn-angenommen {
+    background: var(--accent);
+    color: #fff;
+  }
 
-  .btn-senden:disabled, .btn-ablehnen:disabled {
+  .btn-senden:hover, .btn-ablehnen:hover, .btn-angenommen:hover { opacity: 0.8; }
+
+  .btn-senden:disabled, .btn-ablehnen:disabled, .btn-angenommen:disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }
+
+  .anfrage-status-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .status-versendet { background: var(--accent-glow); color: var(--accent); }
+  .status-offen { background: var(--blue-bg); color: var(--blue); }
 
   /* ===== LOADING & UTILITY ===== */
   .loading {
@@ -607,6 +625,7 @@
 
   .toast.success { border-color: var(--green); }
   .toast.error { border-color: var(--red); }
+  .toast.warning { border-color: var(--yellow); }
 
   /* ===== ANIMATIONS ===== */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -690,12 +709,16 @@
   <div class="tab-content" id="tab-anfragen">
     <div class="stat-row">
       <div class="stat-card">
-        <div class="label">Offene Anfragen</div>
+        <div class="label">Neue Anfragen</div>
         <div class="value blue" id="stat-anfragen">–</div>
       </div>
       <div class="stat-card">
+        <div class="label">Versendet (warten)</div>
+        <div class="value accent" id="stat-versendet">–</div>
+      </div>
+      <div class="stat-card">
         <div class="label">Potenzielle Einnahmen</div>
-        <div class="value accent" id="stat-anfragen-revenue">–</div>
+        <div class="value green" id="stat-anfragen-revenue">–</div>
       </div>
     </div>
 
@@ -939,7 +962,7 @@
       const kundenMap = {};
       kunden.forEach(k => { kundenMap[k.id] = k; });
 
-      const offene = angebote.filter(a => a.Status?.value === 'offen');
+      const offene = angebote.filter(a => ['offen', 'versendet'].includes(a.Status?.value));
 
       // Gruppiere Angebote vom gleichen Kunden + gleichem Datum (= eine Anfrage mit mehreren Sets)
       const groups = {};
@@ -958,9 +981,12 @@
         return dB.localeCompare(dA);
       });
 
-      // Stats: Anzahl = Gruppen (Anfragen), Revenue = Summe aller offenen
+      // Stats
+      const anzOffen = offene.filter(a => a.Status?.value === 'offen').length;
+      const anzVersendet = offene.filter(a => a.Status?.value === 'versendet').length;
       const potRevenue = offene.reduce((sum, a) => sum + (parseFloat(a.Preis_monat_EUR) || 0), 0);
-      document.getElementById('stat-anfragen').textContent = sortedKeys.length;
+      document.getElementById('stat-anfragen').textContent = anzOffen;
+      document.getElementById('stat-versendet').textContent = anzVersendet;
       document.getElementById('stat-anfragen-revenue').textContent = formatEuro(potRevenue) + '/Mo';
       document.getElementById('badge-anfragen').textContent = sortedKeys.length;
 
@@ -1035,12 +1061,33 @@
         angeboteInGroup.forEach((a, idx) => {
           const optionLabel = isMulti ? `Option ${idx + 1}` : 'Angebot';
           const safeKundeName = kundeName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          const istVersendet = a.Status?.value === 'versendet';
+
+          let buttonsHTML = '';
+          if (istVersendet) {
+            buttonsHTML = `
+              <button class="btn-angenommen" id="btn-angenommen-${a.id}" onclick="angebotAngenommen(${a.id}, '${safeKundeName}')">✓ Angebot angenommen</button>
+              <button class="btn-ablehnen" id="btn-ablehnen-${a.id}" onclick="angebotAblehnen(${a.id}, '${safeKundeName}')">✗ Ablehnen</button>
+            `;
+          } else {
+            buttonsHTML = `
+              <button class="btn-senden" id="btn-senden-${a.id}" onclick="angebotSenden(${a.id}, '${safeKundeName}')">✉ Angebot senden</button>
+              <button class="btn-ablehnen" id="btn-ablehnen-${a.id}" onclick="angebotAblehnen(${a.id}, '${safeKundeName}')">✗ Ablehnen</button>
+            `;
+          }
+
+          const statusBadge = istVersendet
+            ? '<span class="anfrage-status-badge status-versendet">Versendet</span>'
+            : '<span class="anfrage-status-badge status-offen">Offen</span>';
 
           optionsHTML += `
             <div class="anfrage-option">
               <div class="anfrage-option-header">
                 <div class="anfrage-option-title">${esc(a.Produkte || '–')}</div>
-                <span class="anfrage-option-label">${optionLabel}</span>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  ${statusBadge}
+                  <span class="anfrage-option-label">${optionLabel}</span>
+                </div>
               </div>
               <div class="detail-grid">
                 <div class="detail-item">
@@ -1057,12 +1104,11 @@
                 </div>
                 <div class="detail-item">
                   <span class="dl">Mindestlaufzeit</span>
-                  <span class="dv">6 Monate</span>
+                  <span class="dv">${a.Laufzeit_Monate || 6} Monate</span>
                 </div>
               </div>
               <div class="anfrage-actions">
-                <button class="btn-senden" id="btn-senden-${a.id}" onclick="angebotSenden(${a.id}, '${safeKundeName}')">✓ Angebot senden</button>
-                <button class="btn-ablehnen" id="btn-ablehnen-${a.id}" onclick="angebotAblehnen(${a.id}, '${safeKundeName}')">✗ Ablehnen</button>
+                ${buttonsHTML}
               </div>
             </div>
           `;
@@ -1102,7 +1148,42 @@
     }
   }
 
-  // ===== ANGEBOT SENDEN (Webhook Workflow B) =====
+  // ===== ANGEBOT ANGENOMMEN (Webhook: angebot-angenommen) =====
+  async function angebotAngenommen(angebotId, kundeName) {
+    if (!confirm(`Angebot für "${kundeName}" als ANGENOMMEN markieren?\n\nDas legt automatisch eine Miete an und prüft die Instrumentenverfügbarkeit.`)) return;
+
+    const btnAngenommen = document.getElementById(`btn-angenommen-${angebotId}`);
+    const btnAblehnen = document.getElementById(`btn-ablehnen-${angebotId}`);
+    if (btnAngenommen) { btnAngenommen.disabled = true; btnAngenommen.textContent = '⏳ Wird verarbeitet...'; }
+    if (btnAblehnen) btnAblehnen.disabled = true;
+
+    try {
+      const res = await fetch(`${N8N_BASE_URL}/angebot-angenommen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ angebot_id: angebotId })
+      });
+
+      if (!res.ok) throw new Error(`Webhook Fehler: ${res.status}`);
+
+      const data = await res.json();
+
+      if (data.instrumentVerfuegbar) {
+        showToast(`✓ Miete für ${kundeName} angelegt! Instrument aus Lager zugewiesen.`, 'success');
+      } else {
+        showToast(`⚠ Miete für ${kundeName} angelegt – kein Instrument lagernd, muss bestellt werden.`, 'warning');
+      }
+
+      setTimeout(() => { loadAnfragen(); loadMieten(); }, 1500);
+
+    } catch (err) {
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+      if (btnAngenommen) { btnAngenommen.disabled = false; btnAngenommen.textContent = '✓ Angebot angenommen'; }
+      if (btnAblehnen) btnAblehnen.disabled = false;
+    }
+  }
+
+  // ===== ANGEBOT SENDEN (Webhook: angebot-erstellen) =====
   async function angebotSenden(angebotId, kundeName) {
     if (!confirm(`Angebot für "${kundeName}" erstellen und an info@ senden?`)) return;
 
@@ -1133,7 +1214,7 @@
     }
   }
 
-  // ===== ANGEBOT ABLEHNEN (Webhook Workflow C) =====
+  // ===== ANGEBOT ABLEHNEN (Webhook: absage-senden) =====
   async function angebotAblehnen(angebotId, kundeName) {
     // Suche Grund-Input: erst pro-Option, dann Gruppen-Grund
     let grundInput = document.getElementById(`grund-${angebotId}`);
@@ -1149,7 +1230,7 @@
     btnAblehnen.textContent = '⏳ Wird abgelehnt...';
 
     try {
-      const res = await fetch(`${N8N_BASE_URL}/angebot-ablehnen`, {
+      const res = await fetch(`${N8N_BASE_URL}/absage-senden`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ angebot_id: angebotId, grund })
@@ -1186,7 +1267,7 @@
     try {
       // Alle parallel ablehnen
       await Promise.all(ids.map(id =>
-        fetch(`${N8N_BASE_URL}/angebot-ablehnen`, {
+        fetch(`${N8N_BASE_URL}/absage-senden`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ angebot_id: id, grund })
