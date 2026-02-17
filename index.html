@@ -234,6 +234,7 @@
   .stat-card .value.green { color: var(--green); }
   .stat-card .value.accent { color: var(--accent); }
   .stat-card .value.blue { color: var(--blue); }
+  .stat-card .value.red { color: var(--red); }
 
   /* ===== SECTION TITLE ===== */
   .section-title {
@@ -627,6 +628,133 @@
   .toast.error { border-color: var(--red); }
   .toast.warning { border-color: var(--yellow); }
 
+  /* ===== ALERT BANNER ===== */
+  .alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--red-bg);
+    border: 1px solid rgba(248, 81, 73, 0.3);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .alert-banner:hover {
+    background: rgba(248, 81, 73, 0.15);
+    border-color: var(--red);
+  }
+
+  .alert-banner.warning {
+    background: var(--yellow-bg);
+    border-color: rgba(210, 153, 34, 0.3);
+  }
+
+  .alert-banner.warning:hover {
+    background: rgba(210, 153, 34, 0.15);
+    border-color: var(--yellow);
+  }
+
+  .alert-icon { font-size: 1.1rem; }
+  .alert-text { flex: 1; font-size: 0.85rem; font-weight: 500; }
+  .alert-arrow { color: var(--text-muted); font-size: 0.85rem; }
+
+  /* ===== AUFGABEN KARTEN ===== */
+  .aufgabe-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 12px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .aufgabe-card:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .aufgabe-card.priority-high {
+    border-left: 3px solid var(--red);
+  }
+
+  .aufgabe-card.priority-medium {
+    border-left: 3px solid var(--yellow);
+  }
+
+  .aufgabe-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .aufgabe-type {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .type-bestellen { background: var(--red-bg); color: var(--red); }
+  .type-bereit { background: var(--green-bg); color: var(--green); }
+
+  .aufgabe-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .aufgabe-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .aufgabe-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .btn-zuweisen {
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    background: var(--green);
+    color: #fff;
+  }
+
+  .btn-zuweisen:hover { opacity: 0.8; }
+  .btn-zuweisen:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-bestellt {
+    border: 1px solid var(--border);
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    color: var(--text-muted);
+  }
+
+  .btn-bestellt:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-bestellt:disabled { opacity: 0.4; cursor: not-allowed; }
+
   /* ===== ANIMATIONS ===== */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
@@ -669,6 +797,13 @@
     </div>
   </div>
 
+  <!-- ALERT BANNER -->
+  <div class="alert-banner" id="alert-banner" style="display:none;" onclick="switchTab('aufgaben')">
+    <span class="alert-icon">⚠</span>
+    <span class="alert-text" id="alert-text"></span>
+    <span class="alert-arrow">→</span>
+  </div>
+
   <!-- TABS -->
   <div class="tabs">
     <button class="tab active" data-tab="mieten" onclick="switchTab('mieten')">
@@ -676,6 +811,9 @@
     </button>
     <button class="tab" data-tab="anfragen" onclick="switchTab('anfragen')">
       Anfragen <span class="badge" id="badge-anfragen">–</span>
+    </button>
+    <button class="tab" data-tab="aufgaben" onclick="switchTab('aufgaben')">
+      Aufgaben <span class="badge" id="badge-aufgaben" style="display:none;">0</span>
     </button>
   </div>
 
@@ -724,6 +862,28 @@
 
     <div class="section-title">Offene Anfragen</div>
     <div id="anfragen-list">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        Daten werden geladen...
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: AUFGABEN -->
+  <div class="tab-content" id="tab-aufgaben">
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="label">Zu bestellen</div>
+        <div class="value red" id="stat-bestellen">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Bereit zur Übergabe</div>
+        <div class="value green" id="stat-bereit">–</div>
+      </div>
+    </div>
+
+    <div class="section-title">Offene Aufgaben</div>
+    <div id="aufgaben-list">
       <div class="loading">
         <div class="loading-spinner"></div>
         Daten werden geladen...
@@ -831,9 +991,267 @@
 
   // ===== REFRESH ALL =====
   async function refreshAll() {
-    await Promise.all([loadMieten(), loadAnfragen()]);
+    await Promise.all([loadMieten(), loadAnfragen(), loadAufgaben()]);
     document.getElementById('last-update').textContent =
       'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ===== LOAD AUFGABEN =====
+  async function loadAufgaben() {
+    const listEl = document.getElementById('aufgaben-list');
+    listEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Daten werden geladen...</div>';
+
+    try {
+      const [mieten, kunden, instrumente, preismodelle] = await Promise.all([
+        fetchRows(785), fetchRows(784), fetchRows(783), fetchRows(786)
+      ]);
+
+      const kundenMap = {};
+      kunden.forEach(k => { kundenMap[k.id] = k; });
+
+      const instrumenteMap = {};
+      instrumente.forEach(i => { instrumenteMap[i.id] = i; });
+
+      const preismodellMap = {};
+      preismodelle.forEach(p => { preismodellMap[p.id] = p; });
+
+      // Mieten mit Status Bestellt oder Bereit
+      const aufgaben = mieten.filter(m =>
+        m.Status && ['Bestellt', 'Bereit'].includes(m.Status.value)
+      );
+
+      // Zähle nach Typ
+      const anzBestellen = aufgaben.filter(a => a.Status.value === 'Bestellt').length;
+      const anzBereit = aufgaben.filter(a => a.Status.value === 'Bereit').length;
+      const totalAufgaben = aufgaben.length;
+
+      document.getElementById('stat-bestellen').textContent = anzBestellen;
+      document.getElementById('stat-bereit').textContent = anzBereit;
+
+      // Badge
+      const badgeEl = document.getElementById('badge-aufgaben');
+      if (totalAufgaben > 0) {
+        badgeEl.textContent = totalAufgaben;
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+
+      // Alert Banner
+      const bannerEl = document.getElementById('alert-banner');
+      const bannerTextEl = document.getElementById('alert-text');
+      if (anzBestellen > 0) {
+        const plural = anzBestellen === 1 ? 'Instrument muss' : 'Instrumente müssen';
+        bannerTextEl.textContent = `${anzBestellen} ${plural} bestellt werden`;
+        bannerEl.className = 'alert-banner';
+        bannerEl.style.display = 'flex';
+      } else if (anzBereit > 0) {
+        const plural = anzBereit === 1 ? 'Instrument ist' : 'Instrumente sind';
+        bannerTextEl.textContent = `${anzBereit} ${plural} bereit zur Übergabe`;
+        bannerEl.className = 'alert-banner warning';
+        bannerEl.style.display = 'flex';
+      } else {
+        bannerEl.style.display = 'none';
+      }
+
+      // Lagernde Instrumente für Zuweisungs-Optionen
+      const lagernde = instrumente.filter(i =>
+        i.Verfügbar?.value === 'Lagernd' &&
+        i.Zustand?.value !== 'Defekt' &&
+        i.Zustand?.value !== 'Ausgemustert / inaktiv'
+      );
+
+      if (totalAufgaben === 0) {
+        listEl.innerHTML = '<div class="loading">Keine offenen Aufgaben – alles erledigt ✓</div>';
+        return;
+      }
+
+      // Sortiere: Bestellt zuerst, dann Bereit
+      aufgaben.sort((a, b) => {
+        const order = { 'Bestellt': 0, 'Bereit': 1 };
+        return (order[a.Status.value] || 99) - (order[b.Status.value] || 99);
+      });
+
+      listEl.innerHTML = '';
+
+      aufgaben.forEach(m => {
+        const kundeId = m.Kunde_ID?.[0]?.id;
+        const kunde = kundenMap[kundeId] || {};
+        const kundeName = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt';
+        const istBestellt = m.Status.value === 'Bestellt';
+
+        // Produkte aus Notizen extrahieren
+        const notizen = m.Notizen || '';
+        const produkteMatch = notizen.match(/Produkte:\s*(.+)/);
+        const produkte = produkteMatch ? produkteMatch[1].trim() : '–';
+
+        // Angebots-Infos
+        const angebotId = m.Angebot_ID?.[0]?.id;
+
+        // Finde passendes lagerndes Instrument (über Preismodell-Match oder Modellname)
+        let matchendeInstrumente = [];
+        if (istBestellt) {
+          // Versuche Produkt-Name-basiertes Matching
+          const produktLower = produkte.toLowerCase();
+          matchendeInstrumente = lagernde.filter(instr => {
+            const modell = (instr.Modellname || '').toLowerCase();
+            // Prüfe ob eines der Produkte zum Instrument passt
+            return modell && produktLower.includes(modell);
+          });
+        }
+
+        const card = document.createElement('div');
+        card.className = `aufgabe-card ${istBestellt ? 'priority-high' : 'priority-medium'}`;
+
+        let actionsHTML = '';
+        if (istBestellt) {
+          if (matchendeInstrumente.length > 0) {
+            // Es gibt jetzt ein passendes Instrument – kann zugewiesen werden
+            const optionsHTML = matchendeInstrumente.map(i =>
+              `<option value="${i.id}">${esc(i.Modellname)} (${esc(i.Zustand?.value || '?')})</option>`
+            ).join('');
+            actionsHTML = `
+              <select class="btn-bestellt" id="select-instr-${m.id}" style="padding:7px 12px;">
+                ${optionsHTML}
+              </select>
+              <button class="btn-zuweisen" onclick="instrumentZuweisen(${m.id}, 'select-instr-${m.id}', '${kundeName.replace(/'/g, "\\'")}')">✓ Instrument zuweisen</button>
+            `;
+          } else {
+            actionsHTML = `
+              <button class="btn-bestellt" onclick="mietStatusAendern(${m.id}, 'Bereit', '${kundeName.replace(/'/g, "\\'")}')">📦 Als "Bereit" markieren</button>
+              <span style="font-size:0.75rem;color:var(--text-muted);align-self:center;">Kein passendes Instrument lagernd</span>
+            `;
+          }
+        } else {
+          // Status Bereit → Aktivieren
+          actionsHTML = `
+            <button class="btn-zuweisen" onclick="mietAktivieren(${m.id}, '${kundeName.replace(/'/g, "\\'")}')">🚀 Miete aktivieren</button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="aufgabe-card-header">
+            <div>
+              <div class="aufgabe-title">${esc(kundeName)}</div>
+              <div class="aufgabe-subtitle">${esc(produkte)}</div>
+            </div>
+            <span class="aufgabe-type ${istBestellt ? 'type-bestellen' : 'type-bereit'}">
+              ${istBestellt ? '🔴 Instrument bestellen' : '🟢 Bereit zur Übergabe'}
+            </span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="dl">Monatspreis</span>
+              <span class="dv mono">${formatEuro(m.Preis_monat_EUR)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="dl">Kaution</span>
+              <span class="dv mono">${formatEuro(m.Kaution_EUR)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="dl">Laufzeit</span>
+              <span class="dv">${m.Laufzeit_Monate || '–'} Monate</span>
+            </div>
+            <div class="detail-item">
+              <span class="dl">Miet-ID</span>
+              <span class="dv mono">${m.Miet_ID || m.id}</span>
+            </div>
+          </div>
+          <div class="aufgabe-actions">
+            ${actionsHTML}
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+    } catch (err) {
+      listEl.innerHTML = `<div class="loading" style="color: var(--red);">Fehler: ${err.message}</div>`;
+    }
+  }
+
+  // ===== INSTRUMENT ZUWEISEN =====
+  async function instrumentZuweisen(mietId, selectElId, kundeName) {
+    const selectEl = document.getElementById(selectElId);
+    const instrumentId = parseInt(selectEl.value);
+
+    if (!confirm(`Instrument dem Mietvertrag für "${kundeName}" zuweisen und Miete aktivieren?`)) return;
+
+    try {
+      // Miete updaten: Instrument zuweisen + Status → Aktiv
+      await fetch(`${BASEROW_URL}/api/database/rows/table/785/${mietId}/?user_field_names=true`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          Instrument_ID: [instrumentId],
+          Status: 'Aktiv',
+          Mietbeginn: new Date().toISOString().split('T')[0]
+        })
+      });
+
+      // Instrument → Vermietet
+      await fetch(`${BASEROW_URL}/api/database/rows/table/783/${instrumentId}/?user_field_names=true`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ Verfügbar: 'Vermietet' })
+      });
+
+      showToast(`✓ Instrument zugewiesen und Miete für ${kundeName} aktiviert!`, 'success');
+      setTimeout(() => refreshAll(), 1500);
+
+    } catch (err) {
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+    }
+  }
+
+  // ===== MIET STATUS ÄNDERN =====
+  async function mietStatusAendern(mietId, neuerStatus, kundeName) {
+    try {
+      await fetch(`${BASEROW_URL}/api/database/rows/table/785/${mietId}/?user_field_names=true`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ Status: neuerStatus })
+      });
+
+      showToast(`✓ Miete für ${kundeName} → ${neuerStatus}`, 'success');
+      setTimeout(() => refreshAll(), 1000);
+
+    } catch (err) {
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+    }
+  }
+
+  // ===== MIETE AKTIVIEREN =====
+  async function mietAktivieren(mietId, kundeName) {
+    if (!confirm(`Miete für "${kundeName}" aktivieren? Mietbeginn wird auf heute gesetzt.`)) return;
+
+    try {
+      await fetch(`${BASEROW_URL}/api/database/rows/table/785/${mietId}/?user_field_names=true`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          Status: 'Aktiv',
+          Mietbeginn: new Date().toISOString().split('T')[0]
+        })
+      });
+
+      showToast(`✓ Miete für ${kundeName} aktiviert!`, 'success');
+      setTimeout(() => refreshAll(), 1500);
+
+    } catch (err) {
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+    }
   }
 
   // ===== LOAD MIETEN =====
