@@ -997,6 +997,9 @@
   }
 
   // ===== LOAD AUFGABEN =====
+  // ===== NORMALIZE für Produkt-Matching =====
+  const normalize = (s) => (s || '').toLowerCase().replace(/[\u2011\u2010\u2012\u2013\u2014]/g, '-').trim();
+
   async function loadAufgaben() {
     const listEl = document.getElementById('aufgaben-list');
     listEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Daten werden geladen...</div>';
@@ -1012,15 +1015,11 @@
       const instrumenteMap = {};
       instrumente.forEach(i => { instrumenteMap[i.id] = i; });
 
-      const preismodellMap = {};
-      preismodelle.forEach(p => { preismodellMap[p.id] = p; });
-
       // Mieten mit Status Bestellt oder Bereit
       const aufgaben = mieten.filter(m =>
         m.Status && ['Bestellt', 'Bereit'].includes(m.Status.value)
       );
 
-      // Zähle nach Typ
       const anzBestellen = aufgaben.filter(a => a.Status.value === 'Bestellt').length;
       const anzBereit = aufgaben.filter(a => a.Status.value === 'Bereit').length;
       const totalAufgaben = aufgaben.length;
@@ -1028,7 +1027,6 @@
       document.getElementById('stat-bestellen').textContent = anzBestellen;
       document.getElementById('stat-bereit').textContent = anzBereit;
 
-      // Badge
       const badgeEl = document.getElementById('badge-aufgaben');
       if (totalAufgaben > 0) {
         badgeEl.textContent = totalAufgaben;
@@ -1041,12 +1039,12 @@
       const bannerEl = document.getElementById('alert-banner');
       const bannerTextEl = document.getElementById('alert-text');
       if (anzBestellen > 0) {
-        const plural = anzBestellen === 1 ? 'Instrument muss' : 'Instrumente müssen';
-        bannerTextEl.textContent = `${anzBestellen} ${plural} bestellt werden`;
+        const plural = anzBestellen === 1 ? 'Miete wartet' : 'Mieten warten';
+        bannerTextEl.textContent = `${anzBestellen} ${plural} auf Produkte`;
         bannerEl.className = 'alert-banner';
         bannerEl.style.display = 'flex';
       } else if (anzBereit > 0) {
-        const plural = anzBereit === 1 ? 'Instrument ist' : 'Instrumente sind';
+        const plural = anzBereit === 1 ? 'Miete ist' : 'Mieten sind';
         bannerTextEl.textContent = `${anzBereit} ${plural} bereit zur Übergabe`;
         bannerEl.className = 'alert-banner warning';
         bannerEl.style.display = 'flex';
@@ -1054,19 +1052,11 @@
         bannerEl.style.display = 'none';
       }
 
-      // Lagernde Instrumente für Zuweisungs-Optionen
-      const lagernde = instrumente.filter(i =>
-        i.Verfügbar?.value === 'Lagernd' &&
-        i.Zustand?.value !== 'Defekt' &&
-        i.Zustand?.value !== 'Ausgemustert / inaktiv'
-      );
-
       if (totalAufgaben === 0) {
         listEl.innerHTML = '<div class="loading">Keine offenen Aufgaben – alles erledigt ✓</div>';
         return;
       }
 
-      // Sortiere: Bestellt zuerst, dann Bereit
       aufgaben.sort((a, b) => {
         const order = { 'Bestellt': 0, 'Bereit': 1 };
         return (order[a.Status.value] || 99) - (order[b.Status.value] || 99);
@@ -1080,50 +1070,59 @@
         const kundeName = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt';
         const istBestellt = m.Status.value === 'Bestellt';
 
-        // Produkte aus Notizen extrahieren
         const notizen = m.Notizen || '';
         const produkteMatch = notizen.match(/Produkte:\s*(.+)/);
         const produkte = produkteMatch ? produkteMatch[1].trim() : '–';
 
-        // Angebots-Infos
-        const angebotId = m.Angebot_ID?.[0]?.id;
+        const zuBestellenMatch = notizen.match(/Zu bestellen:\s*(.+)/);
+        const zuBestellenText = zuBestellenMatch ? zuBestellenMatch[1].trim() : '';
 
-        // Finde passendes lagerndes Instrument (über Preismodell-Match oder Modellname)
-        let matchendeInstrumente = [];
-        if (istBestellt) {
-          // Versuche Produkt-Name-basiertes Matching
-          const produktLower = produkte.toLowerCase();
-          matchendeInstrumente = lagernde.filter(instr => {
-            const modell = (instr.Modellname || '').toLowerCase();
-            // Prüfe ob eines der Produkte zum Instrument passt
-            return modell && produktLower.includes(modell);
-          });
+        // Verlinkte Instrumente prüfen
+        const verlinkteIds = (m.Instrument_ID || []).map(link => link.id);
+        const verlinkteInstrumente = verlinkteIds.map(id => instrumenteMap[id]).filter(Boolean);
+        const inLieferung = verlinkteInstrumente.filter(i => i.Verfügbar?.value === 'In Lieferung');
+
+        // Sub-Status für Bestellt
+        let subStatus = 'keine-produkte';
+        if (istBestellt && verlinkteIds.length > 0) {
+          if (inLieferung.length > 0) {
+            subStatus = 'in-lieferung';
+          } else {
+            subStatus = 'angekommen';
+          }
         }
 
         const card = document.createElement('div');
         card.className = `aufgabe-card ${istBestellt ? 'priority-high' : 'priority-medium'}`;
 
         let actionsHTML = '';
+        let statusBadge = '';
+        const safeKunde = kundeName.replace(/'/g, "\\'");
+
         if (istBestellt) {
-          if (matchendeInstrumente.length > 0) {
-            const optionsHTML = matchendeInstrumente.map(i =>
-              `<option value="${i.id}">${esc(i.Modellname)} (${esc(i.Zustand?.value || '?')})</option>`
-            ).join('');
+          if (subStatus === 'keine-produkte') {
+            statusBadge = '<span class="aufgabe-type type-bestellen">📦 Zu bestellen</span>';
             actionsHTML = `
-              <select class="btn-bestellt" id="select-instr-${m.id}" style="padding:7px 12px;">
-                ${optionsHTML}
-              </select>
-              <button class="btn-zuweisen" onclick="instrumentZuweisen(${m.id}, 'select-instr-${m.id}', '${kundeName.replace(/'/g, "\\'")}', 'Bereit')">📦 Instrument zuweisen → Bereit</button>
+              <button class="btn-zuweisen" onclick="produkteBestellen(${m.id}, '${safeKunde}')">📦 Bestellt</button>
+              <span style="font-size:0.75rem;color:var(--text-muted);align-self:center;">Legt Produkte an (In Lieferung)</span>
+            `;
+          } else if (subStatus === 'in-lieferung') {
+            const namen = inLieferung.map(i => i.Modellname).join(', ');
+            statusBadge = '<span class="aufgabe-type" style="background:var(--yellow-bg);color:var(--yellow);">🚚 In Lieferung</span>';
+            actionsHTML = `
+              <button class="btn-zuweisen" onclick="produkteAngekommen(${m.id}, '${safeKunde}')">✓ Angekommen</button>
+              <span style="font-size:0.75rem;color:var(--text-muted);align-self:center;">${esc(namen)}</span>
             `;
           } else {
+            statusBadge = '<span class="aufgabe-type type-bereit">✓ Alles da</span>';
             actionsHTML = `
-              <span style="font-size:0.8rem;color:var(--text-muted);">Kein passendes Instrument lagernd – zuerst in Baserow anlegen</span>
+              <button class="btn-zuweisen" onclick="mietStatusAendern(${m.id}, 'Bereit', '${safeKunde}')">→ Als Bereit markieren</button>
             `;
           }
         } else {
-          // Status Bereit → Aktivieren
+          statusBadge = '<span class="aufgabe-type type-bereit">🟢 Bereit</span>';
           actionsHTML = `
-            <button class="btn-zuweisen" onclick="mietAktivieren(${m.id}, '${kundeName.replace(/'/g, "\\'")}')">🚀 Miete aktivieren</button>
+            <button class="btn-zuweisen" onclick="mietAktivieren(${m.id}, '${safeKunde}')">🚀 Miete aktivieren</button>
           `;
         }
 
@@ -1131,11 +1130,9 @@
           <div class="aufgabe-card-header">
             <div>
               <div class="aufgabe-title">${esc(kundeName)} <span style="color:var(--text-muted);font-size:0.8rem;font-weight:400;">· Miet-ID ${m.Miet_ID || m.id}</span></div>
-              <div class="aufgabe-subtitle">${esc(produkte)}</div>
+              <div class="aufgabe-subtitle">${esc(zuBestellenText || produkte)}</div>
             </div>
-            <span class="aufgabe-type ${istBestellt ? 'type-bestellen' : 'type-bereit'}">
-              ${istBestellt ? '🔴 Bestellen' : '🟢 Bereit'}
-            </span>
+            ${statusBadge}
           </div>
           <div class="aufgabe-actions">
             ${actionsHTML}
@@ -1149,19 +1146,123 @@
     }
   }
 
-  // ===== INSTRUMENT ZUWEISEN =====
-  async function instrumentZuweisen(mietId, selectElId, kundeName, zielStatus) {
-    const selectEl = document.getElementById(selectElId);
-    const instrumentId = parseInt(selectEl.value);
-
-    if (!confirm(`Instrument dem Mietvertrag für "${kundeName}" zuweisen?\nStatus wird auf "${zielStatus}" gesetzt.`)) return;
+  // ===== STUFE 1: PRODUKTE BESTELLEN =====
+  async function produkteBestellen(mietId, kundeName) {
+    if (!confirm(`Produkte für "${kundeName}" als bestellt markieren?\nNeue Einträge werden in der Produkte-Tabelle angelegt.`)) return;
 
     try {
-      // Miete updaten: Instrument zuweisen + Status
-      const mietUpdate = {
-        Instrument_ID: [instrumentId],
-        Status: zielStatus
-      };
+      const miete = (await fetchRows(785)).find(m => m.id === mietId);
+      if (!miete) throw new Error('Miete nicht gefunden');
+
+      const notizen = miete.Notizen || '';
+      const zuBestellenMatch = notizen.match(/Zu bestellen:\s*(.+)/);
+      if (!zuBestellenMatch) throw new Error('Keine "Zu bestellen" Info in Notizen');
+
+      const produktNamen = zuBestellenMatch[1].split(',').map(p => p.trim()).filter(Boolean);
+      const preismodelle = await fetchRows(786);
+
+      const preisMap = {};
+      preismodelle.forEach(pm => {
+        if (pm.Modellname) preisMap[normalize(pm.Modellname)] = pm;
+      });
+
+      const bestehendeIds = (miete.Instrument_ID || []).map(link => link.id);
+      const neueIds = [];
+
+      for (const name of produktNamen) {
+        const key = normalize(name);
+        let pm = null;
+
+        for (const [k, v] of Object.entries(preisMap)) {
+          if (k === key || k.includes(key) || key.includes(k)) {
+            pm = v;
+            break;
+          }
+        }
+
+        let typ = '';
+        if (pm) {
+          const n = normalize(pm.Modellname);
+          if (n.includes('matte')) typ = 'Zubehör';
+          else if (n.includes('lautsprecher') || n.includes('speaker')) typ = 'Zubehör';
+          else if (n.includes('e-drum') || n.includes('v-drum') || n.includes('td-') || n.includes('nitro') || n.includes('mps-')) typ = 'E-Drum';
+          else if (n.includes('pearl') || n.includes('mapex') || n.includes('tama')) typ = 'akustisch';
+          else typ = 'E-Drum';
+        }
+
+        const body = {
+          Modellname: pm ? pm.Modellname : name,
+          Typ: typ,
+          Zustand: 'Neu',
+          'Verfügbar': 'In Lieferung',
+          'Zubehör_inklusive': pm?.Zubehör || ''
+        };
+
+        if (pm) {
+          body.Preismodell_ID = [pm.id];
+        }
+
+        const res = await fetch(`${BASEROW_URL}/api/database/rows/table/783/?user_field_names=true`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) throw new Error(`Fehler beim Anlegen von "${name}": ${res.status}`);
+        const neuesInstr = await res.json();
+        neueIds.push(neuesInstr.id);
+      }
+
+      const alleIds = [...bestehendeIds, ...neueIds];
+      await fetch(`${BASEROW_URL}/api/database/rows/table/785/${mietId}/?user_field_names=true`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ Instrument_ID: alleIds })
+      });
+
+      showToast(`✓ ${neueIds.length} Produkt(e) angelegt und verlinkt`, 'success');
+      setTimeout(() => refreshAll(), 1500);
+
+    } catch (err) {
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+    }
+  }
+
+  // ===== STUFE 2: PRODUKTE ANGEKOMMEN =====
+  async function produkteAngekommen(mietId, kundeName) {
+    if (!confirm(`Alle Produkte für "${kundeName}" als angekommen markieren?\nMiete wird auf "Bereit" gesetzt.`)) return;
+
+    try {
+      const miete = (await fetchRows(785)).find(m => m.id === mietId);
+      if (!miete) throw new Error('Miete nicht gefunden');
+
+      const instrumente = await fetchRows(783);
+      const instrumenteMap = {};
+      instrumente.forEach(i => { instrumenteMap[i.id] = i; });
+
+      const verlinkteIds = (miete.Instrument_ID || []).map(link => link.id);
+      let updated = 0;
+
+      for (const id of verlinkteIds) {
+        const instr = instrumenteMap[id];
+        if (instr && instr.Verfügbar?.value === 'In Lieferung') {
+          await fetch(`${BASEROW_URL}/api/database/rows/table/783/${id}/?user_field_names=true`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Token ${BASEROW_TOKEN}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 'Verfügbar': 'Lagernd' })
+          });
+          updated++;
+        }
+      }
 
       await fetch(`${BASEROW_URL}/api/database/rows/table/785/${mietId}/?user_field_names=true`, {
         method: 'PATCH',
@@ -1169,20 +1270,10 @@
           'Authorization': `Token ${BASEROW_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(mietUpdate)
+        body: JSON.stringify({ Status: 'Bereit' })
       });
 
-      // Instrument → Vermietet
-      await fetch(`${BASEROW_URL}/api/database/rows/table/783/${instrumentId}/?user_field_names=true`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Token ${BASEROW_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ Verfügbar: 'Vermietet' })
-      });
-
-      showToast(`✓ Instrument zugewiesen → ${zielStatus}`, 'success');
+      showToast(`✓ ${updated} Produkt(e) → Lagernd, Miete → Bereit`, 'success');
       setTimeout(() => refreshAll(), 1500);
 
     } catch (err) {
@@ -1210,11 +1301,26 @@
     }
   }
 
-  // ===== MIETE AKTIVIEREN =====
+  // ===== STUFE 3: MIETE AKTIVIEREN =====
   async function mietAktivieren(mietId, kundeName) {
-    if (!confirm(`Miete für "${kundeName}" aktivieren? Mietbeginn wird auf heute gesetzt.`)) return;
+    if (!confirm(`Miete für "${kundeName}" aktivieren?\nAlle Produkte → Vermietet, Mietbeginn = heute.`)) return;
 
     try {
+      const miete = (await fetchRows(785)).find(m => m.id === mietId);
+      if (!miete) throw new Error('Miete nicht gefunden');
+
+      const verlinkteIds = (miete.Instrument_ID || []).map(link => link.id);
+      for (const id of verlinkteIds) {
+        await fetch(`${BASEROW_URL}/api/database/rows/table/783/${id}/?user_field_names=true`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 'Verfügbar': 'Vermietet' })
+        });
+      }
+
       await fetch(`${BASEROW_URL}/api/database/rows/table/785/${mietId}/?user_field_names=true`, {
         method: 'PATCH',
         headers: {
@@ -1227,7 +1333,7 @@
         })
       });
 
-      showToast(`✓ Miete für ${kundeName} aktiviert!`, 'success');
+      showToast(`✓ Miete für ${kundeName} aktiviert! (${verlinkteIds.length} Produkte)`, 'success');
       setTimeout(() => refreshAll(), 1500);
 
     } catch (err) {
