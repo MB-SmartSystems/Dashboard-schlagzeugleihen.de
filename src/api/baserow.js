@@ -10,6 +10,16 @@ export async function fetchRows(tableId) {
   return (await res.json()).results;
 }
 
+export async function triggerWebhook(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Webhook Fehler ${res.status}`);
+  return res.json();
+}
+
 export const TABLE_IDS = {
   instrumente: 783,
   kunden: 784,

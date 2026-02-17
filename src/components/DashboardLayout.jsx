@@ -73,7 +73,7 @@ export default function DashboardLayout() {
       case "mieten": return <MietenView data={data} />;
       case "instrumente": return <InstrumenteView data={data} />;
       case "kunden": return <KundenView data={data} />;
-      case "angebote": return <AngeboteView data={data} />;
+      case "angebote": return <AngeboteView data={data} reload={reload} />;
       case "rechnungen": return <RechnungenView data={data} />;
       case "einkauf": return <EinkaufView data={data} />;
       case "finanzen": return <FinanzenView data={data} />;
