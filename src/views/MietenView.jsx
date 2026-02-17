@@ -13,7 +13,7 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
   const days = daysUntil(mietende);
   const pct = progressPercent(miete.Mietbeginn, mietende);
 
-  const status = miete.Status?.value || "\u2013";
+  const status = miete.Status?.value || "–";
   let badgeColor = "green";
   let badgeText = status;
 
@@ -21,7 +21,7 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
   else if (status === "Bestellt") { badgeColor = "blue"; badgeText = "Bestellt"; }
   else if (status === "Bereit") { badgeColor = "blue"; badgeText = "Bereit"; }
   else if (status === "Anfrage") { badgeColor = "blue"; badgeText = "Anfrage"; }
-  else if (days <= 0) { badgeColor = "red"; badgeText = "\u00dcberf\u00e4llig"; }
+  else if (days <= 0) { badgeColor = "red"; badgeText = "Überfällig"; }
   else if (days <= 30) { badgeColor = "yellow"; badgeText = `${days}d`; }
 
   const kautionGezahlt = miete.Kaution_gezahlt?.value === "Ja";
@@ -44,11 +44,11 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
         <DetailRow label="Monatspreis" value={formatEuro(miete.Preis_monat_EUR)} mono />
         <DetailRow label="Kaution">
           <Badge color={kautionGezahlt ? "green" : "red"}>
-            {kautionGezahlt ? "\u2713" : "\u2717"} {formatEuro(miete.Kaution_EUR)}
+            {kautionGezahlt ? "✓" : "✗"} {formatEuro(miete.Kaution_EUR)}
           </Badge>
         </DetailRow>
         <DetailRow label="Zahlungsart" value={selectValue(miete.Zahlungsart)} />
-        <DetailRow label="Laufzeit" value={`${miete.Laufzeit_Monate || "\u2013"} Monate`} />
+        <DetailRow label="Laufzeit" value={`${miete.Laufzeit_Monate || "–"} Monate`} />
       </div>
 
       {showProgress && <ProgressBar percent={pct} />}
@@ -77,7 +77,7 @@ export default function MietenView({ data }) {
       <div className="flex gap-3 mb-5 overflow-x-auto">
         <StatCard label="Aktive Mieten" value={aktiv.length} color="green" />
         <StatCard label="Monatl. Einnahmen" value={formatEuro(totalRevenue)} color="orange" />
-        <StatCard label="N\u00e4chstes Ende" value={nextEnd ? formatDate(nextEnd) : "\u2013"} color="blue" />
+        <StatCard label="Nächstes Ende" value={nextEnd ? formatDate(nextEnd) : "–"} color="blue" />
         <StatCard label="Kaution offen" value={kautionOffen} color={kautionOffen > 0 ? "red" : "green"} />
       </div>
 
@@ -100,7 +100,7 @@ export default function MietenView({ data }) {
 
       {/* Aktive */}
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">
-        Aktive Mietvertr\u00e4ge
+        Aktive Mietverträge
       </div>
       {aktiv.length === 0 ? (
         <div className="text-center py-12 text-gray-600">Keine aktiven Mieten.</div>

@@ -10,7 +10,7 @@ function statusBadge(val) {
     case "offen": return <Badge color="yellow">Offen</Badge>;
     case "bezahlt": return <Badge color="green">Bezahlt</Badge>;
     case "Dauerauftrag läuft": return <Badge color="green">Dauerauftrag</Badge>;
-    default: return <Badge color="gray">{val || "\u2013"}</Badge>;
+    default: return <Badge color="gray">{val || "–"}</Badge>;
   }
 }
 
@@ -22,7 +22,7 @@ function RechnungCard({ rechnung, kunde }) {
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold font-mono">
-            {rechnung.Rechnungsnummer || "\u2013"}
+            {rechnung.Rechnungsnummer || "–"}
           </div>
           <div className="text-sm text-gray-500 mt-0.5">{kundeName}</div>
         </div>
@@ -33,7 +33,7 @@ function RechnungCard({ rechnung, kunde }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        <DetailRow label="Produkte" value={rechnung.Produkte || "\u2013"} />
+        <DetailRow label="Produkte" value={rechnung.Produkte || "–"} />
         <DetailRow label="Datum" value={formatDate(rechnung.Rechnungsdatum)} />
         <DetailRow label="Gesamtbetrag" value={formatEuro(rechnung.Gesamtbetrag_EUR)} mono />
         {rechnung.Kaution_EUR && <DetailRow label="Kaution" value={formatEuro(rechnung.Kaution_EUR)} mono />}

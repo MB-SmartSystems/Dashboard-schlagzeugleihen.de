@@ -10,7 +10,7 @@ function statusBadge(val) {
     case "angenommen": return <Badge color="green">Angenommen</Badge>;
     case "abgelehnt": return <Badge color="red">Abgelehnt</Badge>;
     case "abgelaufen": return <Badge color="gray">Abgelaufen</Badge>;
-    default: return <Badge color="gray">{val || "\u2013"}</Badge>;
+    default: return <Badge color="gray">{val || "–"}</Badge>;
   }
 }
 
@@ -22,15 +22,15 @@ function AngebotCard({ angebot, kunde }) {
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold">{kundeName}</div>
-          <div className="text-sm text-gray-500 mt-0.5">{angebot.Produkte || "\u2013"}</div>
+          <div className="text-sm text-gray-500 mt-0.5">{angebot.Produkte || "–"}</div>
         </div>
         {statusBadge(angebot.Status?.value)}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        <DetailRow label="Angebotsnr." value={angebot.Angebotsnummer || "\u2013"} mono />
+        <DetailRow label="Angebotsnr." value={angebot.Angebotsnummer || "–"} mono />
         <DetailRow label="Datum" value={formatDate(angebot.Angebotsdatum)} />
-        <DetailRow label="G\u00fcltig bis" value={formatDate(angebot.Gueltig_bis)} />
+        <DetailRow label="Gültig bis" value={formatDate(angebot.Gueltig_bis)} />
         <DetailRow label="Monatspreis" value={formatEuro(angebot.Preis_monat_EUR)} mono />
         <DetailRow label="Gesamt + Kaution" value={formatEuro(angebot.Gesamtpreis_mit_Kaution)} mono />
         <DetailRow label="Laufzeit" value={`${angebot.Laufzeit_Monate || 6} Monate`} />

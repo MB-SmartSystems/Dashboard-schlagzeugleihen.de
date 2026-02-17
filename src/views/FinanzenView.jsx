@@ -32,7 +32,7 @@ export default function FinanzenView({ data }) {
       </div>
       <div className="flex gap-3 mb-5 overflow-x-auto">
         <StatCard label="Monatlich" value={formatEuro(monatlich)} color="green" />
-        <StatCard label="J\u00e4hrlich" value={formatEuro(jaehrlich)} color="green" />
+        <StatCard label="Jährlich" value={formatEuro(jaehrlich)} color="green" />
         <StatCard label="Rechnungsvolumen" value={formatEuro(rechnungsVolumen)} color="orange" />
       </div>
 
@@ -56,7 +56,7 @@ export default function FinanzenView({ data }) {
 
       {/* Tabelle: Aktive Mieten */}
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
-        Aktive Mieten \u2013 \u00dcbersicht
+        Aktive Mieten – Übersicht
       </div>
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -97,7 +97,7 @@ export default function FinanzenView({ data }) {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Badge color={kautionGezahlt ? "green" : "red"}>
-                        {kautionGezahlt ? "\u2713" : "\u2717"}
+                        {kautionGezahlt ? "✓" : "✗"}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-gray-400">

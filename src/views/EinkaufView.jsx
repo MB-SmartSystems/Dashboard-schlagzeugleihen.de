@@ -7,7 +7,7 @@ function BelegCard({ beleg, instrument }) {
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
       <div className="flex justify-between items-start mb-3">
         <div>
-          <div className="text-[1.05rem] font-semibold">{beleg.Beschreibung || "\u2013"}</div>
+          <div className="text-[1.05rem] font-semibold">{beleg.Beschreibung || "–"}</div>
           {instrument && (
             <div className="text-sm text-gray-500 mt-0.5">{instrument.Modellname}</div>
           )}
@@ -18,7 +18,7 @@ function BelegCard({ beleg, instrument }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        <DetailRow label="H\u00e4ndler" value={beleg.Händler || "\u2013"} />
+        <DetailRow label="Händler" value={beleg.Händler || "–"} />
         <DetailRow label="Kaufdatum" value={formatDate(beleg.Kaufdatum)} />
         {beleg.Beleg_ID && <DetailRow label="Beleg-ID" value={beleg.Beleg_ID} mono />}
       </div>

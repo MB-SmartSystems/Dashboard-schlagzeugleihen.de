@@ -1,5 +1,5 @@
 export const formatDate = (iso) => {
-  if (!iso) return "\u2013";
+  if (!iso) return "–";
   return new Date(iso).toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
@@ -11,7 +11,7 @@ export const formatEuro = (v) =>
   (parseFloat(v) || 0).toLocaleString("de-DE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }) + " \u20ac";
+  }) + " €";
 
 export const daysUntil = (iso) =>
   !iso ? Infinity : Math.ceil((new Date(iso) - new Date()) / 864e5);
@@ -26,7 +26,7 @@ export const progressPercent = (start, end) => {
   return Math.round(((n - s) / (e - s)) * 100);
 };
 
-export const selectValue = (field) => field?.value || "\u2013";
+export const selectValue = (field) => field?.value || "–";
 
 export const lookupValue = (field) => field?.[0]?.value || null;
 

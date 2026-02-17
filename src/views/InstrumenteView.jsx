@@ -8,7 +8,7 @@ function verfuegbarBadge(val) {
     case "Lagernd": return <Badge color="green">Lagernd</Badge>;
     case "Vermietet": return <Badge color="red">Vermietet</Badge>;
     case "Inaktiv": return <Badge color="gray">Inaktiv</Badge>;
-    default: return <Badge color="gray">{val || "\u2013"}</Badge>;
+    default: return <Badge color="gray">{val || "–"}</Badge>;
   }
 }
 
@@ -19,7 +19,7 @@ function zustandBadge(val) {
     case "gebraucht": return <Badge color="yellow">Gebraucht</Badge>;
     case "Defekt": return <Badge color="red">Defekt</Badge>;
     case "Ausgemustert / inaktiv": return <Badge color="gray">Ausgemustert</Badge>;
-    default: return <Badge color="gray">{val || "\u2013"}</Badge>;
+    default: return <Badge color="gray">{val || "–"}</Badge>;
   }
 }
 
@@ -34,7 +34,7 @@ function InstrumentCard({ instr }) {
         <div>
           <div className="text-[1.05rem] font-semibold">{instr.Modellname || "Unbekannt"}</div>
           <div className="text-sm text-gray-500 mt-0.5">
-            {instr.Typ || "\u2013"} &middot; {instr.Serie || "\u2013"}
+            {instr.Typ || "–"} &middot; {instr.Serie || "–"}
           </div>
         </div>
         <div className="flex gap-1.5">
@@ -47,7 +47,7 @@ function InstrumentCard({ instr }) {
         {mietpreis && <DetailRow label="Mietpreis/Monat" value={formatEuro(mietpreis)} mono />}
         {kaution && <DetailRow label="Kaution" value={formatEuro(kaution)} mono />}
         {mietkauf && <DetailRow label="Mietkaufpreis" value={formatEuro(mietkauf)} mono />}
-        {instr.Zubehör_inklusive && <DetailRow label="Zubeh\u00f6r" value={instr.Zubehör_inklusive} />}
+        {instr.Zubehör_inklusive && <DetailRow label="Zubehör" value={instr.Zubehör_inklusive} />}
         {instr.Zubehoer_fehlend && (
           <DetailRow label="Fehlend">
             <span className="text-sm text-red-400 mt-0.5">{instr.Zubehoer_fehlend}</span>
