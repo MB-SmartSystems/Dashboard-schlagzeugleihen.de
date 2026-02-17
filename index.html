@@ -23,6 +23,7 @@
     --yellow: #d29922;
     --yellow-bg: rgba(210, 153, 34, 0.1);
     --blue: #58a6ff;
+    --blue-bg: rgba(88, 166, 255, 0.1);
     --radius: 12px;
   }
 
@@ -116,7 +117,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--border);
   }
@@ -135,48 +136,68 @@
     margin-top: 2px;
   }
 
-  .header-right {
-    text-align: right;
-  }
+  .header-right { text-align: right; }
 
   /* ===== TABS ===== */
   .tabs {
     display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--border);
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
   }
 
-  .tab-btn {
-    background: none;
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
     border: none;
+    background: none;
     color: var(--text-muted);
     font-family: 'DM Sans', sans-serif;
     font-size: 0.85rem;
     font-weight: 600;
-    padding: 10px 16px;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
+    border-radius: 8px;
     transition: all 0.2s;
+    position: relative;
   }
 
-  .tab-btn:hover {
-    color: var(--text);
+  .tab:hover { color: var(--text); }
+
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
   }
 
-  .tab-btn.active {
+  .tab .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  .tab.active .badge {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
+  }
+
+  .tab:not(.active) .badge {
+    background: var(--accent-glow);
     color: var(--accent);
-    border-bottom-color: var(--accent);
   }
 
-  .tab-content {
-    display: none;
-  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
 
-  .tab-content.active {
-    display: block;
-  }
-
+  /* ===== STAT CARDS ===== */
   .stat-row {
     display: flex;
     gap: 12px;
@@ -212,7 +233,7 @@
   .stat-card .value.accent { color: var(--accent); }
   .stat-card .value.blue { color: var(--blue); }
 
-  /* ===== SECTION ===== */
+  /* ===== SECTION TITLE ===== */
   .section-title {
     font-size: 0.8rem;
     color: var(--text-muted);
@@ -222,7 +243,7 @@
     font-weight: 600;
   }
 
-  /* ===== MIETEN CARDS ===== */
+  /* ===== MIET CARDS ===== */
   .miet-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -244,10 +265,7 @@
     margin-bottom: 14px;
   }
 
-  .miet-kunde {
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
+  .miet-kunde { font-size: 1.05rem; font-weight: 600; }
 
   .miet-instrument {
     font-size: 0.85rem;
@@ -268,6 +286,7 @@
   .status-aktiv { background: var(--green-bg); color: var(--green); }
   .status-warnung { background: var(--yellow-bg); color: var(--yellow); }
   .status-ueberfaellig { background: var(--red-bg); color: var(--red); }
+  .status-offen { background: var(--blue-bg); color: var(--blue); }
 
   .miet-details {
     display: grid;
@@ -275,10 +294,7 @@
     gap: 10px;
   }
 
-  .miet-detail {
-    display: flex;
-    flex-direction: column;
-  }
+  .miet-detail { display: flex; flex-direction: column; }
 
   .miet-detail .dl {
     font-size: 0.7rem;
@@ -351,10 +367,6 @@
     border-color: var(--blue);
   }
 
-  .anfrage-card.warning {
-    border-left: 3px solid var(--red);
-  }
-
   .anfrage-top {
     display: flex;
     justify-content: space-between;
@@ -362,78 +374,106 @@
     margin-bottom: 14px;
   }
 
-  .anfrage-kunde {
-    font-size: 1.05rem;
-    font-weight: 600;
+  .anfrage-kunde { font-size: 1.05rem; font-weight: 600; }
+
+  .anfrage-produkte {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 2px;
   }
 
   .anfrage-details {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  .anfrage-produkte {
-    margin-top: 8px;
-    font-size: 0.9rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
   .anfrage-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
   }
 
-  .btn-accept {
-    background: var(--green);
-    color: #fff;
+  .anfrage-grund-wrapper {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .anfrage-grund-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+
+  .anfrage-grund-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .anfrage-grund-input:focus {
+    border-color: var(--accent);
+  }
+
+  .anfrage-grund-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  .btn-senden, .btn-ablehnen {
     border: none;
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.8rem;
     font-weight: 600;
-    padding: 6px 14px;
+    padding: 8px 18px;
     border-radius: 8px;
     cursor: pointer;
     transition: opacity 0.2s;
-    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
   }
 
-  .btn-accept:hover { opacity: 0.85; }
-  .btn-accept:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .btn-senden {
+    background: var(--green);
+    color: #fff;
   }
 
-  .btn-reject {
-    background: var(--red-bg);
-    color: var(--red);
-    border: 1px solid var(--red);
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 6px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .btn-reject:hover {
+  .btn-ablehnen {
     background: var(--red);
     color: #fff;
   }
 
-  .distance-warning {
+  .btn-senden:hover, .btn-ablehnen:hover { opacity: 0.8; }
+
+  .btn-senden:disabled, .btn-ablehnen:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .entfernung-warnung {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: var(--red-bg);
-    color: var(--red);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 6px;
-    margin-top: 8px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--yellow-bg);
+    color: var(--yellow);
+    margin-top: 4px;
   }
 
-  /* ===== UTILS ===== */
+  /* ===== LOADING & UTILITY ===== */
   .loading {
     text-align: center;
     padding: 60px 20px;
@@ -473,6 +513,33 @@
     margin-top: 4px;
   }
 
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 500;
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    max-width: 90vw;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+
   /* ===== ANIMATIONS ===== */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
@@ -484,10 +551,10 @@
     .stat-row { gap: 8px; }
     .stat-card { padding: 12px 14px; min-width: 100px; }
     .stat-card .value { font-size: 1.2rem; }
-    .miet-card { padding: 16px; }
-    .miet-details { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .anfrage-card { padding: 16px; }
+    .miet-card, .anfrage-card { padding: 16px; }
+    .miet-details, .anfrage-details { grid-template-columns: 1fr 1fr; gap: 8px; }
     .anfrage-actions { flex-direction: column; }
+    .anfrage-grund-wrapper { min-width: 100%; }
   }
 </style>
 </head>
@@ -506,33 +573,38 @@
   <div class="header">
     <div class="header-left">
       <div class="logo">schlagzeugleihen.de</div>
-      <div class="page-title" id="page-title">Dashboard</div>
+      <div class="page-title">Dashboard</div>
     </div>
     <div class="header-right">
-      <button class="refresh-btn" onclick="loadData()">↻ Aktualisieren</button>
+      <button class="refresh-btn" onclick="refreshAll()">↻ Aktualisieren</button>
       <div class="last-update" id="last-update"></div>
     </div>
   </div>
 
+  <!-- TABS -->
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('mieten')">Aktive Mieten</button>
-    <button class="tab-btn" onclick="switchTab('anfragen')">Anfragen <span id="anfragen-count" style="opacity: 0.6;"></span></button>
+    <button class="tab active" data-tab="mieten" onclick="switchTab('mieten')">
+      Aktive Mieten <span class="badge" id="badge-mieten">–</span>
+    </button>
+    <button class="tab" data-tab="anfragen" onclick="switchTab('anfragen')">
+      Anfragen <span class="badge" id="badge-anfragen">–</span>
+    </button>
   </div>
 
   <!-- TAB: AKTIVE MIETEN -->
-  <div id="tab-mieten" class="tab-content active">
+  <div class="tab-content active" id="tab-mieten">
     <div class="stat-row" id="stats">
       <div class="stat-card">
         <div class="label">Aktive Mieten</div>
-        <div class="value green" id="stat-count">—</div>
+        <div class="value green" id="stat-count">–</div>
       </div>
       <div class="stat-card">
         <div class="label">Monatl. Einnahmen</div>
-        <div class="value accent" id="stat-revenue">—</div>
+        <div class="value accent" id="stat-revenue">–</div>
       </div>
       <div class="stat-card">
         <div class="label">Nächstes Ende</div>
-        <div class="value blue" id="stat-next-end">—</div>
+        <div class="value blue" id="stat-next-end">–</div>
       </div>
     </div>
 
@@ -546,7 +618,18 @@
   </div>
 
   <!-- TAB: ANFRAGEN -->
-  <div id="tab-anfragen" class="tab-content">
+  <div class="tab-content" id="tab-anfragen">
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="label">Offene Anfragen</div>
+        <div class="value blue" id="stat-anfragen">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Potenzielle Einnahmen</div>
+        <div class="value accent" id="stat-anfragen-revenue">–</div>
+      </div>
+    </div>
+
     <div class="section-title">Offene Anfragen</div>
     <div id="anfragen-list">
       <div class="loading">
@@ -557,14 +640,15 @@
   </div>
 </div>
 
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
 <script>
   // ===== CONFIG =====
   const BASEROW_URL = 'https://baserow.mb-smartsystems.de';
   const BASEROW_TOKEN = 'REDACTED_TOKEN';
   const PIN = 'REDACTED_PIN';
-  const N8N_WEBHOOK_URL = 'https://n8n.mb-smartsystems.de/webhook/'; // <-- WEBHOOK URL HIER
-
-  // Alsbach-Hähnlein PLZ für Entfernungsberechnung
+  const N8N_BASE_URL = 'https://n8n.mb-smartsystems.de/webhook';
   const HOME_PLZ = '64665';
 
   // ===== PIN =====
@@ -578,7 +662,7 @@
     if (input.value === PIN) {
       document.getElementById('pin-screen').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
-      loadData();
+      refreshAll();
     } else {
       input.classList.add('error');
       input.value = '';
@@ -588,17 +672,22 @@
   }
 
   // ===== TABS =====
-  function switchTab(tab) {
-    // Update buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    // Update content
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(`tab-${tabName}`).classList.add('active');
   }
 
-  // ===== DATA LOADING =====
+  // ===== TOAST =====
+  function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast ${type} show`;
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+  }
+
+  // ===== DATA HELPERS =====
   async function fetchRows(tableId, filters = '') {
     const url = `${BASEROW_URL}/api/database/rows/table/${tableId}/?user_field_names=true&size=200${filters}`;
     const res = await fetch(url, {
@@ -609,22 +698,8 @@
     return data.results;
   }
 
-  async function updateRow(tableId, rowId, data) {
-    const url = `${BASEROW_URL}/api/database/rows/table/${tableId}/${rowId}/?user_field_names=true`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error(`Baserow error ${res.status}`);
-    return res.json();
-  }
-
   function formatDate(iso) {
-    if (!iso) return '—';
+    if (!iso) return '–';
     const d = new Date(iso);
     return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
@@ -650,75 +725,54 @@
     return Math.round(((now - s) / (e - s)) * 100);
   }
 
-  // Einfache PLZ-Distanz (Näherung basierend auf ersten 2 Ziffern)
-  function checkDistance(plz) {
-    if (!plz) return false;
-    const home = parseInt(HOME_PLZ.substring(0, 2));
-    const target = parseInt(plz.toString().substring(0, 2));
-    const diff = Math.abs(home - target);
-    // Grobe Schätzung: >5 Unterschied = ca. >50km
-    return diff > 5;
+  function plzEntfernung(plz1, plz2) {
+    if (!plz1 || !plz2) return 0;
+    return Math.abs(parseInt(plz1) - parseInt(plz2));
   }
 
-  async function loadData() {
-    try {
-      // Load both tabs
-      await Promise.all([
-        loadMieten(),
-        loadAnfragen()
-      ]);
-
-      document.getElementById('last-update').textContent =
-        'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
-    } catch (err) {
-      console.error('Fehler beim Laden:', err);
-    }
+  // ===== REFRESH ALL =====
+  async function refreshAll() {
+    await Promise.all([loadMieten(), loadAnfragen()]);
+    document.getElementById('last-update').textContent =
+      'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   }
 
+  // ===== LOAD MIETEN =====
   async function loadMieten() {
     const listEl = document.getElementById('miet-list');
     listEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Daten werden geladen...</div>';
 
     try {
-      // Fetch all three tables
       const [mieten, kunden, instrumente] = await Promise.all([
         fetchRows(785),
         fetchRows(784),
         fetchRows(783)
       ]);
 
-      // Build lookup maps
       const kundenMap = {};
       kunden.forEach(k => { kundenMap[k.id] = k; });
 
       const instrumenteMap = {};
       instrumente.forEach(i => { instrumenteMap[i.id] = i; });
 
-      // Filter active rentals
       const aktiv = mieten.filter(m =>
         m.Status && ['Aktiv', 'Verlängert', 'unbefristet'].includes(m.Status.value)
       );
 
-      // Sort by Mietende
       aktiv.sort((a, b) => {
         const da = a.Mietende_berechnet || '9999-12-31';
         const db = b.Mietende_berechnet || '9999-12-31';
         return da.localeCompare(db);
       });
 
-      // Stats
       const totalRevenue = aktiv.reduce((sum, m) => sum + (parseFloat(m.Preis_monat_EUR) || 0), 0);
-      const nextEnd = aktiv
-        .map(m => m.Mietende_berechnet)
-        .filter(Boolean)
-        .sort()[0];
+      const nextEnd = aktiv.map(m => m.Mietende_berechnet).filter(Boolean).sort()[0];
 
       document.getElementById('stat-count').textContent = aktiv.length;
       document.getElementById('stat-revenue').textContent = formatEuro(totalRevenue);
-      document.getElementById('stat-next-end').textContent = nextEnd ? formatDate(nextEnd) : '—';
+      document.getElementById('stat-next-end').textContent = nextEnd ? formatDate(nextEnd) : '–';
+      document.getElementById('badge-mieten').textContent = aktiv.length;
 
-      // Render cards
       if (aktiv.length === 0) {
         listEl.innerHTML = '<div class="loading">Keine aktiven Mieten gefunden.</div>';
         return;
@@ -752,7 +806,7 @@
         }
 
         const kautionGezahlt = m.Kaution_gezahlt?.value === 'Ja';
-        const zahlungsart = m.Zahlungsart?.value || '—';
+        const zahlungsart = m.Zahlungsart?.value || '–';
 
         let barClass = 'green';
         if (pct > 85) barClass = 'red';
@@ -795,7 +849,7 @@
             </div>
             <div class="miet-detail">
               <span class="dl">Laufzeit</span>
-              <span class="dv">${m.Laufzeit_Monate || '—'} Monate</span>
+              <span class="dv">${m.Laufzeit_Monate || '–'} Monate</span>
             </div>
           </div>
           <div class="miet-bar-container">
@@ -811,55 +865,96 @@
     }
   }
 
+  // ===== LOAD ANFRAGEN =====
   async function loadAnfragen() {
     const listEl = document.getElementById('anfragen-list');
     listEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Daten werden geladen...</div>';
 
     try {
-      // Fetch Angebote table (787)
-      const angebote = await fetchRows(787);
+      const [angebote, kunden] = await Promise.all([
+        fetchRows(787),
+        fetchRows(784)
+      ]);
 
-      // Filter offene Anfragen
-      const offen = angebote.filter(a => a.Status && a.Status.value === 'offen');
+      const kundenMap = {};
+      kunden.forEach(k => { kundenMap[k.id] = k; });
 
-      // Update badge
-      document.getElementById('anfragen-count').textContent = offen.length > 0 ? `(${offen.length})` : '';
+      const offene = angebote.filter(a => a.Status?.value === 'offen');
 
-      // Render
-      if (offen.length === 0) {
+      offene.sort((a, b) => {
+        const da = a.Angebotsdatum || '0000-00-00';
+        const db = b.Angebotsdatum || '0000-00-00';
+        return db.localeCompare(da); // Neueste zuerst
+      });
+
+      const potRevenue = offene.reduce((sum, a) => sum + (parseFloat(a.Preis_monat_EUR) || 0), 0);
+
+      document.getElementById('stat-anfragen').textContent = offene.length;
+      document.getElementById('stat-anfragen-revenue').textContent = formatEuro(potRevenue) + '/Mo';
+      document.getElementById('badge-anfragen').textContent = offene.length;
+
+      if (offene.length === 0) {
         listEl.innerHTML = '<div class="loading">Keine offenen Anfragen.</div>';
         return;
       }
 
       listEl.innerHTML = '';
 
-      offen.forEach(anf => {
-        const kunde = anf.Kunden_ID?.[0] || {};
-        const kundeName = kunde.value || 'Unbekannt';
-        const produkte = anf.Produkte || '—';
-        const datum = formatDate(anf.Angebotsdatum);
-        const plz = anf.Kunden_ID?.[0]?.value?.match(/\d{5}/)?.[0] || '';
-        
-        const distanceWarning = checkDistance(plz);
+      offene.forEach(a => {
+        const kundeId = a.Kunden_ID?.[0]?.id;
+        const kunde = kundenMap[kundeId] || {};
+        const kundeName = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt';
+        const kundePLZ = kunde.Adresse_PLZ || '';
+        const kundeOrt = kunde.Adresse_Ort || '';
+        const kundeEmail = kunde.EMail || '';
+
+        const entfernungDiff = plzEntfernung(HOME_PLZ, kundePLZ);
+        const istWeit = entfernungDiff > 5;
 
         const card = document.createElement('div');
-        card.className = 'anfrage-card' + (distanceWarning ? ' warning' : '');
+        card.className = 'anfrage-card';
         card.innerHTML = `
           <div class="anfrage-top">
             <div>
               <div class="anfrage-kunde">${kundeName}</div>
-              <div class="anfrage-details">${datum} · ${anf.Angebotsnummer || '—'}</div>
-              <div class="anfrage-produkte">${produkte}</div>
-              ${distanceWarning ? '<div class="distance-warning">⚠ >50km Entfernung</div>' : ''}
+              <div class="anfrage-produkte">${a.Produkte || '–'}</div>
+              ${istWeit ? `<div class="entfernung-warnung">⚠ PLZ ${kundePLZ} ${kundeOrt} – evtl. weite Entfernung</div>` : ''}
             </div>
-            <div class="anfrage-actions">
-              <button class="btn-accept" onclick="angebotSenden(${anf.id}, '${kundeName}')">
-                ✓ Senden
-              </button>
-              <button class="btn-reject" onclick="anfrageAblehnen(${anf.id}, '${kundeName}')">
-                ✗ Ablehnen
-              </button>
+            <span class="miet-status status-offen">Offen</span>
+          </div>
+          <div class="anfrage-details">
+            <div class="miet-detail">
+              <span class="dl">Monatspreis</span>
+              <span class="dv mono">${formatEuro(a.Preis_monat_EUR)}</span>
             </div>
+            <div class="miet-detail">
+              <span class="dl">Kaution</span>
+              <span class="dv mono">${formatEuro(a.Kaution)}</span>
+            </div>
+            <div class="miet-detail">
+              <span class="dl">Gesamt (6 Mo + Kaution)</span>
+              <span class="dv mono">${formatEuro(a.Gesamtpreis_mit_Kaution)}</span>
+            </div>
+            <div class="miet-detail">
+              <span class="dl">Email</span>
+              <span class="dv">${kundeEmail}</span>
+            </div>
+            <div class="miet-detail">
+              <span class="dl">Angebotsdatum</span>
+              <span class="dv">${formatDate(a.Angebotsdatum)}</span>
+            </div>
+            <div class="miet-detail">
+              <span class="dl">Gültig bis</span>
+              <span class="dv">${formatDate(a.Gueltig_bis)}</span>
+            </div>
+          </div>
+          <div class="anfrage-actions">
+            <div class="anfrage-grund-wrapper">
+              <div class="anfrage-grund-label">Absage-Grund (optional)</div>
+              <input type="text" class="anfrage-grund-input" id="grund-${a.id}" placeholder="z.B. kein Set verfügbar, zu weit entfernt...">
+            </div>
+            <button class="btn-senden" id="btn-senden-${a.id}" onclick="angebotSenden(${a.id}, '${kundeName.replace(/'/g, "\\'")}')">✓ Angebot senden</button>
+            <button class="btn-ablehnen" id="btn-ablehnen-${a.id}" onclick="angebotAblehnen(${a.id}, '${kundeName.replace(/'/g, "\\'")}')">✗ Ablehnen</button>
           </div>
         `;
         listEl.appendChild(card);
@@ -870,50 +965,70 @@
     }
   }
 
-  // ===== ANFRAGEN ACTIONS =====
+  // ===== ANGEBOT SENDEN (Webhook Workflow B) =====
   async function angebotSenden(angebotId, kundeName) {
-    if (!confirm(`Angebot an ${kundeName} senden?`)) return;
+    if (!confirm(`Angebot für "${kundeName}" erstellen und an info@ senden?`)) return;
 
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = 'Sende...';
+    const btnSenden = document.getElementById(`btn-senden-${angebotId}`);
+    const btnAblehnen = document.getElementById(`btn-ablehnen-${angebotId}`);
+    btnSenden.disabled = true;
+    btnAblehnen.disabled = true;
+    btnSenden.textContent = '⏳ Wird erstellt...';
 
     try {
-      // TODO: n8n Webhook aufrufen
-      // await fetch(`${N8N_WEBHOOK_URL}angebot-senden`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ angebot_id: angebotId })
-      // });
+      const res = await fetch(`${N8N_BASE_URL}/angebot-erstellen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ angebot_id: angebotId })
+      });
 
-      // Temporär: Status auf "angenommen" setzen
-      await updateRow(787, angebotId, { Status: 3090 }); // 3090 = "angenommen"
+      if (!res.ok) throw new Error(`Webhook Fehler: ${res.status}`);
 
-      alert('Angebot wurde versendet!');
-      loadAnfragen();
+      const data = await res.json();
+      showToast(`✓ Angebot für ${kundeName} erstellt! (${data.angebotsnummer || ''})`, 'success');
+
+      // Reload nach kurzer Pause
+      setTimeout(() => loadAnfragen(), 1500);
 
     } catch (err) {
-      alert('Fehler: ' + err.message);
-      btn.disabled = false;
-      btn.textContent = '✓ Senden';
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+      btnSenden.disabled = false;
+      btnAblehnen.disabled = false;
+      btnSenden.textContent = '✓ Angebot senden';
     }
   }
 
-  async function anfrageAblehnen(angebotId, kundeName) {
-    const grund = prompt(`Grund für Ablehnung von ${kundeName}:`, 'Zu weite Entfernung');
-    if (!grund) return;
+  // ===== ANGEBOT ABLEHNEN (Webhook Workflow C) =====
+  async function angebotAblehnen(angebotId, kundeName) {
+    const grundInput = document.getElementById(`grund-${angebotId}`);
+    const grund = grundInput ? grundInput.value.trim() : '';
+
+    if (!confirm(`Anfrage von "${kundeName}" wirklich ablehnen?`)) return;
+
+    const btnSenden = document.getElementById(`btn-senden-${angebotId}`);
+    const btnAblehnen = document.getElementById(`btn-ablehnen-${angebotId}`);
+    btnSenden.disabled = true;
+    btnAblehnen.disabled = true;
+    btnAblehnen.textContent = '⏳ Wird abgelehnt...';
 
     try {
-      await updateRow(787, angebotId, {
-        Status: 3091, // "abgelehnt"
-        Notizen: `Abgelehnt: ${grund}`
+      const res = await fetch(`${N8N_BASE_URL}/angebot-ablehnen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ angebot_id: angebotId, grund })
       });
 
-      alert('Anfrage wurde abgelehnt.');
-      loadAnfragen();
+      if (!res.ok) throw new Error(`Webhook Fehler: ${res.status}`);
+
+      showToast(`✗ Anfrage von ${kundeName} abgelehnt. Absage-Email gesendet.`, 'success');
+
+      setTimeout(() => loadAnfragen(), 1500);
 
     } catch (err) {
-      alert('Fehler: ' + err.message);
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+      btnSenden.disabled = false;
+      btnAblehnen.disabled = false;
+      btnAblehnen.textContent = '✗ Ablehnen';
     }
   }
 </script>
