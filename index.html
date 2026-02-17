@@ -24,6 +24,8 @@
     --yellow-bg: rgba(210, 153, 34, 0.1);
     --blue: #58a6ff;
     --blue-bg: rgba(88, 166, 255, 0.1);
+    --purple: #bc8cff;
+    --purple-bg: rgba(188, 140, 255, 0.1);
     --radius: 12px;
   }
 
@@ -288,28 +290,28 @@
   .status-ueberfaellig { background: var(--red-bg); color: var(--red); }
   .status-offen { background: var(--blue-bg); color: var(--blue); }
 
-  .miet-details {
+  .detail-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
   }
 
-  .miet-detail { display: flex; flex-direction: column; }
+  .detail-item { display: flex; flex-direction: column; }
 
-  .miet-detail .dl {
+  .detail-item .dl {
     font-size: 0.7rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
 
-  .miet-detail .dv {
+  .detail-item .dv {
     font-size: 0.9rem;
     font-weight: 500;
     margin-top: 2px;
   }
 
-  .miet-detail .dv.mono {
+  .detail-item .dv.mono {
     font-family: 'Space Mono', monospace;
     font-size: 0.85rem;
   }
@@ -352,27 +354,64 @@
   .kaution-ja { background: var(--green-bg); color: var(--green); }
   .kaution-nein { background: var(--red-bg); color: var(--red); }
 
-  /* ===== ANFRAGEN CARDS ===== */
-  .anfrage-card {
-    background: var(--bg-card);
+  /* ===== ANFRAGE GROUPS ===== */
+  .anfrage-group {
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 12px;
-    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 16px;
+    overflow: hidden;
   }
 
-  .anfrage-card:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--blue);
+  .anfrage-group-header {
+    background: var(--bg-card);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .anfrage-group-kunde {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .anfrage-group-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .anfrage-group-meta span { display: inline-flex; align-items: center; gap: 4px; }
+
+  .beratung-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: var(--purple-bg);
+    color: var(--purple);
+  }
+
+  .entfernung-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: var(--yellow-bg);
+    color: var(--yellow);
   }
 
   .anfrage-text-box {
     background: rgba(88, 166, 255, 0.06);
-    border: 1px solid rgba(88, 166, 255, 0.15);
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
     font-size: 0.85rem;
     line-height: 1.5;
     color: var(--text);
@@ -381,36 +420,59 @@
   .anfrage-text-label {
     font-weight: 600;
     color: var(--blue);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
 
-  .anfrage-top {
+  .anfrage-option {
+    background: var(--bg-card);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  .anfrage-option:hover { background: var(--bg-card-hover); }
+
+  .anfrage-option-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 14px;
+    align-items: center;
+    margin-bottom: 12px;
   }
 
-  .anfrage-kunde { font-size: 1.05rem; font-weight: 600; }
-
-  .anfrage-produkte {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-top: 2px;
+  .anfrage-option-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
   }
 
-  .anfrage-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
+  .anfrage-option-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--blue-bg);
+    color: var(--blue);
+    white-space: nowrap;
   }
 
   .anfrage-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .anfrage-actions-group {
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.02);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
     align-items: flex-end;
     flex-wrap: wrap;
   }
@@ -477,19 +539,6 @@
   .btn-senden:disabled, .btn-ablehnen:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-
-  .entfernung-warnung {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 12px;
-    background: var(--yellow-bg);
-    color: var(--yellow);
-    margin-top: 4px;
   }
 
   /* ===== LOADING & UTILITY ===== */
@@ -570,10 +619,11 @@
     .stat-row { gap: 8px; }
     .stat-card { padding: 12px 14px; min-width: 100px; }
     .stat-card .value { font-size: 1.2rem; }
-    .miet-card, .anfrage-card { padding: 16px; }
-    .miet-details, .anfrage-details { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .anfrage-actions { flex-direction: column; }
+    .miet-card, .anfrage-option { padding: 14px; }
+    .detail-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .anfrage-actions, .anfrage-actions-group { flex-direction: column; }
     .anfrage-grund-wrapper { min-width: 100%; }
+    .anfrage-group-meta { gap: 6px; font-size: 0.75rem; }
   }
 </style>
 </head>
@@ -670,6 +720,14 @@
   const N8N_BASE_URL = 'https://n8n.mb-smartsystems.de/webhook';
   const HOME_PLZ = '64665';
 
+  // ===== XSS HELPER =====
+  function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
   // ===== PIN =====
   document.getElementById('pin-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') checkPin();
@@ -707,8 +765,8 @@
   }
 
   // ===== DATA HELPERS =====
-  async function fetchRows(tableId, filters = '') {
-    const url = `${BASEROW_URL}/api/database/rows/table/${tableId}/?user_field_names=true&size=200${filters}`;
+  async function fetchRows(tableId) {
+    const url = `${BASEROW_URL}/api/database/rows/table/${tableId}/?user_field_names=true&size=200`;
     const res = await fetch(url, {
       headers: { 'Authorization': `Token ${BASEROW_TOKEN}` }
     });
@@ -730,8 +788,7 @@
 
   function daysUntil(iso) {
     if (!iso) return Infinity;
-    const diff = new Date(iso) - new Date();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return Math.ceil((new Date(iso) - new Date()) / (1000 * 60 * 60 * 24));
   }
 
   function progressPercent(start, end) {
@@ -763,14 +820,11 @@
 
     try {
       const [mieten, kunden, instrumente] = await Promise.all([
-        fetchRows(785),
-        fetchRows(784),
-        fetchRows(783)
+        fetchRows(785), fetchRows(784), fetchRows(783)
       ]);
 
       const kundenMap = {};
       kunden.forEach(k => { kundenMap[k.id] = k; });
-
       const instrumenteMap = {};
       instrumente.forEach(i => { instrumenteMap[i.id] = i; });
 
@@ -800,33 +854,21 @@
       listEl.innerHTML = '';
 
       aktiv.forEach(m => {
-        const kundeId = m.Kunde_ID?.[0]?.id;
-        const instrumentId = m.Instrument_ID?.[0]?.id;
-        const kunde = kundenMap[kundeId] || {};
-        const instrument = instrumenteMap[instrumentId] || {};
+        const kunde = kundenMap[m.Kunde_ID?.[0]?.id] || {};
+        const instrument = instrumenteMap[m.Instrument_ID?.[0]?.id] || {};
+        const kundeName = esc([kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt');
+        const instrName = esc(instrument.Modellname || 'Unbekannt');
+        const instrTyp = esc(instrument.Typ || '');
 
-        const kundeName = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt';
-        const instrName = instrument.Modellname || 'Unbekannt';
-        const instrTyp = instrument.Typ || '';
-
-        const mietbeginn = m.Mietbeginn;
         const mietende = m.Mietende_berechnet;
         const days = daysUntil(mietende);
-        const pct = progressPercent(mietbeginn, mietende);
+        const pct = progressPercent(m.Mietbeginn, mietende);
 
-        let statusClass = 'status-aktiv';
-        let statusText = 'Aktiv';
-        if (days <= 0) {
-          statusClass = 'status-ueberfaellig';
-          statusText = 'Überfällig';
-        } else if (days <= 30) {
-          statusClass = 'status-warnung';
-          statusText = `${days} Tage`;
-        }
+        let statusClass = 'status-aktiv', statusText = 'Aktiv';
+        if (days <= 0) { statusClass = 'status-ueberfaellig'; statusText = 'Überfällig'; }
+        else if (days <= 30) { statusClass = 'status-warnung'; statusText = `${days} Tage`; }
 
         const kautionGezahlt = m.Kaution_gezahlt?.value === 'Ja';
-        const zahlungsart = m.Zahlungsart?.value || '–';
-
         let barClass = 'green';
         if (pct > 85) barClass = 'red';
         else if (pct > 65) barClass = 'yellow';
@@ -841,20 +883,20 @@
             </div>
             <span class="miet-status ${statusClass}">${statusText}</span>
           </div>
-          <div class="miet-details">
-            <div class="miet-detail">
+          <div class="detail-grid">
+            <div class="detail-item">
               <span class="dl">Mietbeginn</span>
-              <span class="dv">${formatDate(mietbeginn)}</span>
+              <span class="dv">${formatDate(m.Mietbeginn)}</span>
             </div>
-            <div class="miet-detail">
+            <div class="detail-item">
               <span class="dl">Mietende</span>
               <span class="dv">${formatDate(mietende)}</span>
             </div>
-            <div class="miet-detail">
+            <div class="detail-item">
               <span class="dl">Monatspreis</span>
               <span class="dv mono">${formatEuro(m.Preis_monat_EUR)}</span>
             </div>
-            <div class="miet-detail">
+            <div class="detail-item">
               <span class="dl">Kaution</span>
               <span class="dv">
                 <span class="kaution-badge ${kautionGezahlt ? 'kaution-ja' : 'kaution-nein'}">
@@ -862,11 +904,11 @@
                 </span>
               </span>
             </div>
-            <div class="miet-detail">
+            <div class="detail-item">
               <span class="dl">Zahlungsart</span>
-              <span class="dv">${zahlungsart}</span>
+              <span class="dv">${esc(m.Zahlungsart?.value || '–')}</span>
             </div>
-            <div class="miet-detail">
+            <div class="detail-item">
               <span class="dl">Laufzeit</span>
               <span class="dv">${m.Laufzeit_Monate || '–'} Monate</span>
             </div>
@@ -884,15 +926,14 @@
     }
   }
 
-  // ===== LOAD ANFRAGEN =====
+  // ===== LOAD ANFRAGEN (mit Multi-Set-Gruppierung) =====
   async function loadAnfragen() {
     const listEl = document.getElementById('anfragen-list');
     listEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Daten werden geladen...</div>';
 
     try {
       const [angebote, kunden] = await Promise.all([
-        fetchRows(787),
-        fetchRows(784)
+        fetchRows(787), fetchRows(784)
       ]);
 
       const kundenMap = {};
@@ -900,95 +941,160 @@
 
       const offene = angebote.filter(a => a.Status?.value === 'offen');
 
-      offene.sort((a, b) => {
-        const da = a.Angebotsdatum || '0000-00-00';
-        const db = b.Angebotsdatum || '0000-00-00';
-        return db.localeCompare(da); // Neueste zuerst
+      // Gruppiere Angebote vom gleichen Kunden + gleichem Datum (= eine Anfrage mit mehreren Sets)
+      const groups = {};
+      offene.forEach(a => {
+        const kundeId = a.Kunden_ID?.[0]?.id || 'unknown';
+        const datum = a.Angebotsdatum || '';
+        const key = `${kundeId}_${datum}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(a);
       });
 
+      // Sortiere: neueste Anfragen zuerst
+      const sortedKeys = Object.keys(groups).sort((a, b) => {
+        const dA = groups[a][0]?.Angebotsdatum || '0000';
+        const dB = groups[b][0]?.Angebotsdatum || '0000';
+        return dB.localeCompare(dA);
+      });
+
+      // Stats: Anzahl = Gruppen (Anfragen), Revenue = Summe aller offenen
       const potRevenue = offene.reduce((sum, a) => sum + (parseFloat(a.Preis_monat_EUR) || 0), 0);
-
-      document.getElementById('stat-anfragen').textContent = offene.length;
+      document.getElementById('stat-anfragen').textContent = sortedKeys.length;
       document.getElementById('stat-anfragen-revenue').textContent = formatEuro(potRevenue) + '/Mo';
-      document.getElementById('badge-anfragen').textContent = offene.length;
+      document.getElementById('badge-anfragen').textContent = sortedKeys.length;
 
-      if (offene.length === 0) {
+      if (sortedKeys.length === 0) {
         listEl.innerHTML = '<div class="loading">Keine offenen Anfragen.</div>';
         return;
       }
 
       listEl.innerHTML = '';
 
-      offene.forEach(a => {
-        const kundeId = a.Kunden_ID?.[0]?.id;
+      sortedKeys.forEach(key => {
+        const angeboteInGroup = groups[key];
+        const first = angeboteInGroup[0];
+        const kundeId = first.Kunden_ID?.[0]?.id;
         const kunde = kundenMap[kundeId] || {};
-        const kundeName = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt';
-        const kundePLZ = kunde.Adresse_PLZ || '';
-        const kundeOrt = kunde.Adresse_Ort || '';
-        const kundeEmail = kunde.EMail || '';
 
-        const entfernungDiff = plzEntfernung(HOME_PLZ, kundePLZ);
+        const kundeName = esc([kunde.Vorname, kunde.Nachname].filter(Boolean).join(' ') || 'Unbekannt');
+        const kundeEmail = esc(kunde.EMail || '');
+        const kundeTelefon = esc(kunde.Telefon || '');
+        const kundeStrasse = esc(kunde.Adresse_Strasse || '');
+        const kundePLZ = esc(kunde.Adresse_PLZ || '');
+        const kundeOrt = esc(kunde.Adresse_Ort || '');
+        const anfrageText = esc(first.Anfragetext || '');
+
+        const entfernungDiff = plzEntfernung(HOME_PLZ, kunde.Adresse_PLZ);
         const istWeit = entfernungDiff > 5;
-        const kundeTelefon = kunde.Telefon || '';
-        const kundeStrasse = kunde.Adresse_Strasse || '';
-        const anfrageText = a.Anfragetext || '';
 
-        const card = document.createElement('div');
-        card.className = 'anfrage-card';
-        card.innerHTML = `
-          <div class="anfrage-top">
-            <div>
-              <div class="anfrage-kunde">${kundeName}</div>
-              <div class="anfrage-produkte">${a.Produkte || '–'}</div>
-              ${istWeit ? `<div class="entfernung-warnung">⚠ PLZ ${kundePLZ} ${kundeOrt} – evtl. weite Entfernung</div>` : ''}
+        // Prüfe ob Beratung gewünscht (in Produkte-Text enthalten)
+        const hatBeratung = angeboteInGroup.some(a =>
+          (a.Produkte || '').toLowerCase().includes('beratung')
+        );
+
+        const isMulti = angeboteInGroup.length > 1;
+
+        // Adresse formatieren
+        const adresseTeile = [kundeStrasse, [kundePLZ, kundeOrt].filter(Boolean).join(' ')].filter(Boolean);
+        const adresse = adresseTeile.join(', ') || '–';
+
+        // Baue Gruppen-Container
+        const group = document.createElement('div');
+        group.className = 'anfrage-group';
+
+        // === Header mit Kundendaten ===
+        let headerHTML = `
+          <div class="anfrage-group-header">
+            <div class="anfrage-group-kunde">${kundeName}</div>
+            <div class="anfrage-group-meta">
+              <span>📧 ${kundeEmail || '–'}</span>
+              <span>📱 ${kundeTelefon || '–'}</span>
+              <span>📍 ${adresse}</span>
+              <span>📅 Anfrage: ${formatDate(first.Angebotsdatum)}</span>
+              <span>⏳ Gültig bis: ${formatDate(first.Gueltig_bis)}</span>
+              ${isMulti ? `<span class="anfrage-option-label">${angeboteInGroup.length} Optionen</span>` : ''}
+              ${hatBeratung ? '<span class="beratung-badge">💡 Beratung gewünscht</span>' : ''}
+              ${istWeit ? `<span class="entfernung-badge">⚠ PLZ ${kundePLZ} – evtl. weite Entfernung</span>` : ''}
             </div>
-            <span class="miet-status status-offen">Offen</span>
-          </div>
-          ${anfrageText ? `<div class="anfrage-text-box"><span class="anfrage-text-label">💬 Anliegen:</span> ${anfrageText}</div>` : ''}
-          <div class="anfrage-details">
-            <div class="miet-detail">
-              <span class="dl">Monatspreis</span>
-              <span class="dv mono">${formatEuro(a.Preis_monat_EUR)}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Kaution</span>
-              <span class="dv mono">${formatEuro(a.Kaution)}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Gesamt (6 Mo + Kaution)</span>
-              <span class="dv mono">${formatEuro(a.Gesamtpreis_mit_Kaution)}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Email</span>
-              <span class="dv">${kundeEmail}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Telefon</span>
-              <span class="dv">${kundeTelefon || '–'}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Adresse</span>
-              <span class="dv">${kundeStrasse ? kundeStrasse + ', ' : ''}${kundePLZ} ${kundeOrt}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Angebotsdatum</span>
-              <span class="dv">${formatDate(a.Angebotsdatum)}</span>
-            </div>
-            <div class="miet-detail">
-              <span class="dl">Gültig bis</span>
-              <span class="dv">${formatDate(a.Gueltig_bis)}</span>
-            </div>
-          </div>
-          <div class="anfrage-actions">
-            <div class="anfrage-grund-wrapper">
-              <div class="anfrage-grund-label">Absage-Grund (optional)</div>
-              <input type="text" class="anfrage-grund-input" id="grund-${a.id}" placeholder="z.B. kein Set verfügbar, zu weit entfernt...">
-            </div>
-            <button class="btn-senden" id="btn-senden-${a.id}" onclick="angebotSenden(${a.id}, '${kundeName.replace(/'/g, "\\'")}')">✓ Angebot senden</button>
-            <button class="btn-ablehnen" id="btn-ablehnen-${a.id}" onclick="angebotAblehnen(${a.id}, '${kundeName.replace(/'/g, "\\'")}')">✗ Ablehnen</button>
           </div>
         `;
-        listEl.appendChild(card);
+
+        // === Anliegen Box ===
+        let anliegenHTML = '';
+        if (anfrageText) {
+          anliegenHTML = `
+            <div class="anfrage-text-box">
+              <span class="anfrage-text-label">💬 Anliegen:</span> ${anfrageText}
+            </div>
+          `;
+        }
+
+        // === Angebots-Optionen ===
+        let optionsHTML = '';
+        angeboteInGroup.forEach((a, idx) => {
+          const optionLabel = isMulti ? `Option ${idx + 1}` : 'Angebot';
+          const safeKundeName = kundeName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+          optionsHTML += `
+            <div class="anfrage-option">
+              <div class="anfrage-option-header">
+                <div class="anfrage-option-title">${esc(a.Produkte || '–')}</div>
+                <span class="anfrage-option-label">${optionLabel}</span>
+              </div>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="dl">Monatspreis</span>
+                  <span class="dv mono">${formatEuro(a.Preis_monat_EUR)}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="dl">Kaution</span>
+                  <span class="dv mono">${formatEuro(a.Kaution)}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="dl">Gesamt (6 Mo + Kaution)</span>
+                  <span class="dv mono">${formatEuro(a.Gesamtpreis_mit_Kaution)}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="dl">Mindestlaufzeit</span>
+                  <span class="dv">6 Monate</span>
+                </div>
+              </div>
+              <div class="anfrage-actions">
+                <button class="btn-senden" id="btn-senden-${a.id}" onclick="angebotSenden(${a.id}, '${safeKundeName}')">✓ Angebot senden</button>
+                <button class="btn-ablehnen" id="btn-ablehnen-${a.id}" onclick="angebotAblehnen(${a.id}, '${safeKundeName}')">✗ Ablehnen</button>
+              </div>
+            </div>
+          `;
+        });
+
+        // === Absage-Grund (einmal pro Gruppe, unten) ===
+        const allIds = angeboteInGroup.map(a => a.id);
+        const safeKundeNameAll = kundeName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        let footerHTML = '';
+        if (isMulti) {
+          footerHTML = `
+            <div class="anfrage-actions-group">
+              <div class="anfrage-grund-wrapper">
+                <div class="anfrage-grund-label">Absage-Grund (optional, für alle Optionen)</div>
+                <input type="text" class="anfrage-grund-input" id="grund-group-${allIds[0]}" placeholder="z.B. kein Set verfügbar, zu weit entfernt...">
+              </div>
+              <button class="btn-ablehnen" onclick="angebotAlleAblehnen([${allIds.join(',')}], '${safeKundeNameAll}', 'grund-group-${allIds[0]}')">✗ Alle ablehnen</button>
+            </div>
+          `;
+        } else {
+          footerHTML = `
+            <div class="anfrage-actions-group">
+              <div class="anfrage-grund-wrapper">
+                <div class="anfrage-grund-label">Absage-Grund (optional)</div>
+                <input type="text" class="anfrage-grund-input" id="grund-${allIds[0]}" placeholder="z.B. kein Set verfügbar, zu weit entfernt...">
+              </div>
+            </div>
+          `;
+        }
+
+        group.innerHTML = headerHTML + anliegenHTML + optionsHTML + footerHTML;
+        listEl.appendChild(group);
       });
 
     } catch (err) {
@@ -1017,8 +1123,6 @@
 
       const data = await res.json();
       showToast(`✓ Angebot für ${kundeName} erstellt! (${data.angebotsnummer || ''})`, 'success');
-
-      // Reload nach kurzer Pause
       setTimeout(() => loadAnfragen(), 1500);
 
     } catch (err) {
@@ -1031,7 +1135,9 @@
 
   // ===== ANGEBOT ABLEHNEN (Webhook Workflow C) =====
   async function angebotAblehnen(angebotId, kundeName) {
-    const grundInput = document.getElementById(`grund-${angebotId}`);
+    // Suche Grund-Input: erst pro-Option, dann Gruppen-Grund
+    let grundInput = document.getElementById(`grund-${angebotId}`);
+    if (!grundInput) grundInput = document.getElementById(`grund-group-${angebotId}`);
     const grund = grundInput ? grundInput.value.trim() : '';
 
     if (!confirm(`Anfrage von "${kundeName}" wirklich ablehnen?`)) return;
@@ -1052,7 +1158,6 @@
       if (!res.ok) throw new Error(`Webhook Fehler: ${res.status}`);
 
       showToast(`✗ Anfrage von ${kundeName} abgelehnt. Absage-Email gesendet.`, 'success');
-
       setTimeout(() => loadAnfragen(), 1500);
 
     } catch (err) {
@@ -1060,6 +1165,45 @@
       btnSenden.disabled = false;
       btnAblehnen.disabled = false;
       btnAblehnen.textContent = '✗ Ablehnen';
+    }
+  }
+
+  // ===== ALLE ANGEBOTE EINER GRUPPE ABLEHNEN =====
+  async function angebotAlleAblehnen(ids, kundeName, grundInputId) {
+    const grundInput = document.getElementById(grundInputId);
+    const grund = grundInput ? grundInput.value.trim() : '';
+
+    if (!confirm(`Alle ${ids.length} Angebots-Optionen von "${kundeName}" wirklich ablehnen?`)) return;
+
+    // Disable all buttons in this group
+    ids.forEach(id => {
+      const s = document.getElementById(`btn-senden-${id}`);
+      const a = document.getElementById(`btn-ablehnen-${id}`);
+      if (s) s.disabled = true;
+      if (a) a.disabled = true;
+    });
+
+    try {
+      // Alle parallel ablehnen
+      await Promise.all(ids.map(id =>
+        fetch(`${N8N_BASE_URL}/angebot-ablehnen`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ angebot_id: id, grund })
+        })
+      ));
+
+      showToast(`✗ Alle ${ids.length} Optionen von ${kundeName} abgelehnt.`, 'success');
+      setTimeout(() => loadAnfragen(), 1500);
+
+    } catch (err) {
+      showToast(`✗ Fehler: ${err.message}`, 'error');
+      ids.forEach(id => {
+        const s = document.getElementById(`btn-senden-${id}`);
+        const a = document.getElementById(`btn-ablehnen-${id}`);
+        if (s) s.disabled = false;
+        if (a) a.disabled = false;
+      });
     }
   }
 </script>
