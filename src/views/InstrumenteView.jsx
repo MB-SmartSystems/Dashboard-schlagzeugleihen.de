@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
+import FilterBar from "../components/FilterBar";
+import { useFilterSort } from "../hooks/useFilterSort";
 import { formatEuro } from "../utils/format";
 
 function verfuegbarBadge(val) {
@@ -61,22 +64,65 @@ function InstrumentCard({ instr }) {
 export default function InstrumenteView({ data }) {
   const { instrumente } = data;
 
-  const aktiv = instrumente.filter(
+  const typOptions = useMemo(() =>
+    [...new Set(instrumente.map((i) => i.Typ).filter(Boolean))].sort(),
+    [instrumente]
+  );
+
+  const filterSortConfig = useMemo(() => ({
+    filters: [
+      { key: "verfuegbar", label: "Verfügbar", accessor: (i) => i.Verfügbar?.value || "–",
+        options: ["Lagernd", "Vermietet", "Inaktiv"] },
+      { key: "typ", label: "Typ", accessor: (i) => i.Typ || "–", options: typOptions },
+      { key: "zustand", label: "Zustand", accessor: (i) => i.Zustand?.value || "–",
+        options: ["Neu", "Gut", "gebraucht", "Defekt", "Ausgemustert / inaktiv"] },
+    ],
+    sorts: [
+      { key: "name_az", label: "Name A-Z", compareFn: (a, b) => (a.Modellname || "").localeCompare(b.Modellname || "") },
+      { key: "zustand", label: "Zustand", compareFn: (a, b) => {
+        const prio = { "Defekt": 0, "gebraucht": 1, "Gut": 2, "Neu": 3, "Ausgemustert / inaktiv": 4 };
+        return (prio[a.Zustand?.value] ?? 5) - (prio[b.Zustand?.value] ?? 5);
+      }},
+      { key: "verfuegbar", label: "Verfügbarkeit", compareFn: (a, b) => {
+        const prio = { "Lagernd": 0, "Vermietet": 1, "Inaktiv": 2 };
+        return (prio[a.Verfügbar?.value] ?? 3) - (prio[b.Verfügbar?.value] ?? 3);
+      }},
+    ],
+  }), [typOptions]);
+
+  const fs = useFilterSort(instrumente, filterSortConfig);
+
+  const aktiv = fs.items.filter(
     (i) => i.Zustand?.value !== "Ausgemustert / inaktiv" && i.Verfügbar?.value !== "Inaktiv"
   );
-  const inaktiv = instrumente.filter(
+  const inaktiv = fs.items.filter(
     (i) => i.Zustand?.value === "Ausgemustert / inaktiv" || i.Verfügbar?.value === "Inaktiv"
   );
-  const vermietet = aktiv.filter((i) => i.Verfügbar?.value === "Vermietet").length;
-  const lagernd = aktiv.filter((i) => i.Verfügbar?.value === "Lagernd").length;
+
+  const aktivAll = instrumente.filter(
+    (i) => i.Zustand?.value !== "Ausgemustert / inaktiv" && i.Verfügbar?.value !== "Inaktiv"
+  );
+  const vermietet = aktivAll.filter((i) => i.Verfügbar?.value === "Vermietet").length;
+  const lagernd = aktivAll.filter((i) => i.Verfügbar?.value === "Lagernd").length;
 
   return (
     <div>
       <div className="flex gap-3 mb-5 overflow-x-auto">
-        <StatCard label="Aktiv" value={aktiv.length} color="white" />
+        <StatCard label="Aktiv" value={aktivAll.length} color="white" />
         <StatCard label="Vermietet" value={vermietet} color="red" />
         <StatCard label="Lagernd" value={lagernd} color="green" />
       </div>
+
+      <FilterBar
+        filterConfigs={fs.filterConfigs}
+        activeFilters={fs.activeFilters}
+        onToggleFilter={fs.toggleFilter}
+        sortConfigs={fs.sortConfigs}
+        activeSort={fs.activeSort}
+        onSortChange={fs.setActiveSort}
+        hasActiveFilters={fs.hasActiveFilters}
+        onClearFilters={fs.clearFilters}
+      />
 
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
         Aktive Instrumente

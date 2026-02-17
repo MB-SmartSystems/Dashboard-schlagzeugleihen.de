@@ -11,12 +11,14 @@ export function useBaserowData() {
     setLoading(true);
     setError(null);
     try {
-      const results = await Promise.all(
-        Object.values(TABLE_IDS).map(fetchRows)
-      );
-      const keys = Object.keys(TABLE_IDS);
+      // Nur Tabellen laden, die eine gültige ID haben (aufgaben kann null sein)
+      const entries = Object.entries(TABLE_IDS).filter(([, id]) => id != null);
+      const results = await Promise.all(entries.map(([, id]) => fetchRows(id)));
       const tables = {};
-      keys.forEach((k, i) => (tables[k] = results[i]));
+      entries.forEach(([key], i) => (tables[key] = results[i]));
+
+      // aufgaben immer als Array bereitstellen, auch wenn nicht konfiguriert
+      if (!tables.aufgaben) tables.aufgaben = [];
 
       const kundenMap = {};
       tables.kunden.forEach((k) => (kundenMap[k.id] = k));

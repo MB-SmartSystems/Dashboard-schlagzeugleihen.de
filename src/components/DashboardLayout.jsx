@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Tab from "./Tab";
 import { useBaserowData } from "../hooks/useBaserowData";
+import { computeDerivedTasks } from "../utils/derivedTasks";
+import AufgabenView from "../views/AufgabenView";
 import MietenView from "../views/MietenView";
 import InstrumenteView from "../views/InstrumenteView";
 import KundenView from "../views/KundenView";
@@ -10,6 +12,7 @@ import EinkaufView from "../views/EinkaufView";
 import FinanzenView from "../views/FinanzenView";
 
 const TABS = [
+  { key: "aufgaben", label: "Aufgaben" },
   { key: "mieten", label: "Mieten" },
   { key: "instrumente", label: "Instrumente" },
   { key: "kunden", label: "Kunden" },
@@ -19,9 +22,15 @@ const TABS = [
   { key: "finanzen", label: "Finanzen" },
 ];
 
-function tabCount(key, data) {
+function tabCount(key, data, derivedTasks) {
   if (!data) return undefined;
   switch (key) {
+    case "aufgaben": {
+      const baserowOpen = (data.aufgaben || []).filter(
+        (a) => a.Status?.value !== "Erledigt"
+      ).length;
+      return baserowOpen + (derivedTasks || []).length;
+    }
     case "mieten": {
       const aktiv = data.mieten.filter((m) =>
         ["Aktiv", "Verlängert", "unbefristet"].includes(m.Status?.value)
@@ -48,8 +57,24 @@ function tabCount(key, data) {
 }
 
 export default function DashboardLayout() {
-  const [activeTab, setActiveTab] = useState("mieten");
+  const [activeTab, setActiveTab] = useState("aufgaben");
   const { data, loading, error, lastUpdate, reload } = useBaserowData();
+
+  /* Abgeleitete Aufgaben berechnen */
+  const derivedTasks = useMemo(() => {
+    if (!data) return [];
+    return computeDerivedTasks(data);
+  }, [data]);
+
+  /* Aufgaben-Badge rot wenn Hoch-Prio */
+  const aufgabenHasHigh = useMemo(() => {
+    if (!data) return false;
+    const baserowHigh = (data.aufgaben || []).some(
+      (a) => a.Status?.value !== "Erledigt" && (a.Priorität?.value === "Hoch" || a.Prioritaet?.value === "Hoch")
+    );
+    const derivedHigh = derivedTasks.some((t) => t.prioritaet === "Hoch");
+    return baserowHigh || derivedHigh;
+  }, [data, derivedTasks]);
 
   const renderView = () => {
     if (loading) {
@@ -70,9 +95,10 @@ export default function DashboardLayout() {
     if (!data) return null;
 
     switch (activeTab) {
+      case "aufgaben": return <AufgabenView data={data} reload={reload} setActiveTab={setActiveTab} derivedTasks={derivedTasks} />;
       case "mieten": return <MietenView data={data} />;
       case "instrumente": return <InstrumenteView data={data} />;
-      case "kunden": return <KundenView data={data} />;
+      case "kunden": return <KundenView data={data} reload={reload} />;
       case "angebote": return <AngeboteView data={data} reload={reload} />;
       case "rechnungen": return <RechnungenView data={data} />;
       case "einkauf": return <EinkaufView data={data} />;
@@ -116,9 +142,10 @@ export default function DashboardLayout() {
           <Tab
             key={t.key}
             label={t.label}
-            count={tabCount(t.key, data)}
+            count={tabCount(t.key, data, derivedTasks)}
             active={activeTab === t.key}
             onClick={() => setActiveTab(t.key)}
+            badgeColor={t.key === "aufgaben" && aufgabenHasHigh ? "red" : undefined}
           />
         ))}
       </div>

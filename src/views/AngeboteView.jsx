@@ -1,9 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
 import Modal from "../components/Modal";
 import Toast from "../components/Toast";
+import FilterBar from "../components/FilterBar";
+import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro } from "../utils/format";
 import { triggerWebhook } from "../api/baserow";
 
@@ -136,9 +138,23 @@ export default function AngeboteView({ data, reload }) {
     }
   };
 
-  const offen = angebote.filter((a) => ["offen", "versendet"].includes(a.Status?.value));
-  const angenommen = angebote.filter((a) => a.Status?.value === "angenommen");
-  const abgelehnt = angebote.filter((a) => ["abgelehnt", "abgelaufen"].includes(a.Status?.value));
+  const filterSortConfig = useMemo(() => ({
+    filters: [
+      { key: "status", label: "Status", accessor: (a) => a.Status?.value || "–",
+        options: ["offen", "versendet", "angenommen", "abgelehnt", "abgelaufen"] },
+    ],
+    sorts: [
+      { key: "datum", label: "Datum", compareFn: (a, b) => (b.Angebotsdatum || "").localeCompare(a.Angebotsdatum || "") },
+      { key: "gueltig", label: "Gültig bis", compareFn: (a, b) => (a.Gueltig_bis || "9999").localeCompare(b.Gueltig_bis || "9999") },
+      { key: "preis", label: "Monatspreis", compareFn: (a, b) => (parseFloat(b.Preis_monat_EUR) || 0) - (parseFloat(a.Preis_monat_EUR) || 0) },
+    ],
+  }), []);
+
+  const fs = useFilterSort(angebote, filterSortConfig);
+
+  const offen = fs.items.filter((a) => ["offen", "versendet"].includes(a.Status?.value));
+  const angenommen = fs.items.filter((a) => a.Status?.value === "angenommen");
+  const abgelehnt = fs.items.filter((a) => ["abgelehnt", "abgelaufen"].includes(a.Status?.value));
 
   const confirmKunde = confirmAngebot ? kundenMap[confirmAngebot.Kunden_ID?.[0]?.id] : null;
   const confirmName = confirmKunde
@@ -152,6 +168,17 @@ export default function AngeboteView({ data, reload }) {
         <StatCard label="Angenommen" value={angenommen.length} color="green" />
         <StatCard label="Abgelehnt" value={abgelehnt.length} color="red" />
       </div>
+
+      <FilterBar
+        filterConfigs={fs.filterConfigs}
+        activeFilters={fs.activeFilters}
+        onToggleFilter={fs.toggleFilter}
+        sortConfigs={fs.sortConfigs}
+        activeSort={fs.activeSort}
+        onSortChange={fs.setActiveSort}
+        hasActiveFilters={fs.hasActiveFilters}
+        onClearFilters={fs.clearFilters}
+      />
 
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
         Offene Angebote

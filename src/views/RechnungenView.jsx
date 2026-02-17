@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
+import FilterBar from "../components/FilterBar";
+import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro } from "../utils/format";
 
 function statusBadge(val) {
@@ -66,6 +69,19 @@ export default function RechnungenView({ data }) {
 
   const volumen = rechnungen.reduce((s, r) => s + (parseFloat(r.Gesamtbetrag_EUR) || 0), 0);
 
+  const filterSortConfig = useMemo(() => ({
+    filters: [
+      { key: "status", label: "Status", accessor: (r) => r.Status?.value || "–",
+        options: ["Entwurf", "gesendet", "offen", "bezahlt", "Dauerauftrag läuft"] },
+    ],
+    sorts: [
+      { key: "datum", label: "Datum", compareFn: (a, b) => (b.Rechnungsdatum || "").localeCompare(a.Rechnungsdatum || "") },
+      { key: "betrag", label: "Betrag", compareFn: (a, b) => (parseFloat(b.Gesamtbetrag_EUR) || 0) - (parseFloat(a.Gesamtbetrag_EUR) || 0) },
+    ],
+  }), []);
+
+  const fs = useFilterSort(rechnungen, filterSortConfig);
+
   return (
     <div>
       <div className="flex gap-3 mb-5 overflow-x-auto">
@@ -73,13 +89,24 @@ export default function RechnungenView({ data }) {
         <StatCard label="Volumen" value={formatEuro(volumen)} color="orange" />
       </div>
 
+      <FilterBar
+        filterConfigs={fs.filterConfigs}
+        activeFilters={fs.activeFilters}
+        onToggleFilter={fs.toggleFilter}
+        sortConfigs={fs.sortConfigs}
+        activeSort={fs.activeSort}
+        onSortChange={fs.setActiveSort}
+        hasActiveFilters={fs.hasActiveFilters}
+        onClearFilters={fs.clearFilters}
+      />
+
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
         Alle Rechnungen
       </div>
-      {rechnungen.length === 0 ? (
+      {fs.items.length === 0 ? (
         <div className="text-center py-12 text-gray-600">Keine Rechnungen.</div>
       ) : (
-        rechnungen.map((r) => (
+        fs.items.map((r) => (
           <RechnungCard key={r.id} rechnung={r} kunde={kundenMap[r.Kunde_ID?.[0]?.id]} />
         ))
       )}

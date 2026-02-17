@@ -31,3 +31,11 @@ export const selectValue = (field) => field?.value || "–";
 export const lookupValue = (field) => field?.[0]?.value || null;
 
 export const linkId = (field) => field?.[0]?.id || null;
+
+export const normalizeWhatsApp = (raw) => {
+  if (!raw) return "";
+  let num = raw.replace(/[\s\-\(\)\/]/g, "");
+  if (num.startsWith("+")) num = num.slice(1);
+  if (num.startsWith("0")) num = "49" + num.slice(1);
+  return num;
+};

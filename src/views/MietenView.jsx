@@ -1,7 +1,10 @@
+import { useMemo } from "react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
 import ProgressBar from "../components/ProgressBar";
+import FilterBar from "../components/FilterBar";
+import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro, daysUntil, progressPercent, selectValue } from "../utils/format";
 
 function MietCard({ miete, kunde, instrument, showProgress = false }) {
@@ -59,46 +62,68 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
 export default function MietenView({ data }) {
   const { mieten, kundenMap, instrumenteMap } = data;
 
-  const pipeline = mieten.filter((m) =>
-    ["Bestellt", "Bereit", "Anfrage"].includes(m.Status?.value)
-  );
-  const aktiv = mieten
+  const filterSortConfig = useMemo(() => ({
+    filters: [
+      { key: "status", label: "Status", accessor: (m) => m.Status?.value || "–",
+        options: ["Anfrage", "Bestellt", "Bereit", "Aktiv", "Verlängert", "unbefristet", "Beendet"] },
+      { key: "zahlungsart", label: "Zahlungsart", accessor: (m) => m.Zahlungsart?.value || "–",
+        options: ["Überweisung", "Dauerauftrag", "Paypal", "Bar"] },
+      { key: "kaution", label: "Kaution", accessor: (m) => m.Kaution_gezahlt?.value === "Ja" ? "Gezahlt" : "Offen",
+        options: ["Offen", "Gezahlt"] },
+    ],
+    sorts: [
+      { key: "mietende", label: "Mietende", compareFn: (a, b) => (a.Mietende_berechnet || "9999").localeCompare(b.Mietende_berechnet || "9999") },
+      { key: "preis", label: "Monatspreis", compareFn: (a, b) => (parseFloat(b.Preis_monat_EUR) || 0) - (parseFloat(a.Preis_monat_EUR) || 0) },
+      { key: "kunde_az", label: "Kunde A-Z", compareFn: (a, b) => {
+        const na = [kundenMap[a.Kunde_ID?.[0]?.id]?.Nachname, kundenMap[a.Kunde_ID?.[0]?.id]?.Vorname].filter(Boolean).join(" ");
+        const nb = [kundenMap[b.Kunde_ID?.[0]?.id]?.Nachname, kundenMap[b.Kunde_ID?.[0]?.id]?.Vorname].filter(Boolean).join(" ");
+        return na.localeCompare(nb);
+      }},
+    ],
+  }), [kundenMap]);
+
+  const fs = useFilterSort(mieten, filterSortConfig);
+
+  const pipeline = fs.items.filter((m) => ["Bestellt", "Bereit", "Anfrage"].includes(m.Status?.value));
+  const aktiv = fs.items
     .filter((m) => ["Aktiv", "Verlängert", "unbefristet"].includes(m.Status?.value))
     .sort((a, b) => (a.Mietende_berechnet || "9999").localeCompare(b.Mietende_berechnet || "9999"));
-  const beendet = mieten.filter((m) => m.Status?.value === "Beendet");
+  const beendet = fs.items.filter((m) => m.Status?.value === "Beendet");
 
-  const totalRevenue = aktiv.reduce((s, m) => s + (parseFloat(m.Preis_monat_EUR) || 0), 0);
-  const nextEnd = aktiv.map((m) => m.Mietende_berechnet).filter(Boolean).sort()[0];
-  const kautionOffen = aktiv.filter((m) => m.Kaution_gezahlt?.value !== "Ja").length;
+  const aktivAll = mieten.filter((m) => ["Aktiv", "Verlängert", "unbefristet"].includes(m.Status?.value));
+  const totalRevenue = aktivAll.reduce((s, m) => s + (parseFloat(m.Preis_monat_EUR) || 0), 0);
+  const nextEnd = aktivAll.map((m) => m.Mietende_berechnet).filter(Boolean).sort()[0];
+  const kautionOffen = aktivAll.filter((m) => m.Kaution_gezahlt?.value !== "Ja").length;
 
   return (
     <div>
-      {/* Stats */}
       <div className="flex gap-3 mb-5 overflow-x-auto">
-        <StatCard label="Aktive Mieten" value={aktiv.length} color="green" />
+        <StatCard label="Aktive Mieten" value={aktivAll.length} color="green" />
         <StatCard label="Monatl. Einnahmen" value={formatEuro(totalRevenue)} color="orange" />
         <StatCard label="Nächstes Ende" value={nextEnd ? formatDate(nextEnd) : "–"} color="blue" />
         <StatCard label="Kaution offen" value={kautionOffen} color={kautionOffen > 0 ? "red" : "green"} />
       </div>
 
-      {/* Pipeline */}
+      <FilterBar
+        filterConfigs={fs.filterConfigs}
+        activeFilters={fs.activeFilters}
+        onToggleFilter={fs.toggleFilter}
+        sortConfigs={fs.sortConfigs}
+        activeSort={fs.activeSort}
+        onSortChange={fs.setActiveSort}
+        hasActiveFilters={fs.hasActiveFilters}
+        onClearFilters={fs.clearFilters}
+      />
+
       {pipeline.length > 0 && (
         <>
-          <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
-            Pipeline
-          </div>
+          <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">Pipeline</div>
           {pipeline.map((m) => (
-            <MietCard
-              key={m.id}
-              miete={m}
-              kunde={kundenMap[m.Kunde_ID?.[0]?.id]}
-              instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]}
-            />
+            <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} />
           ))}
         </>
       )}
 
-      {/* Aktive */}
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">
         Aktive Mietverträge
       </div>
@@ -106,30 +131,16 @@ export default function MietenView({ data }) {
         <div className="text-center py-12 text-gray-600">Keine aktiven Mieten.</div>
       ) : (
         aktiv.map((m) => (
-          <MietCard
-            key={m.id}
-            miete={m}
-            kunde={kundenMap[m.Kunde_ID?.[0]?.id]}
-            instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]}
-            showProgress
-          />
+          <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} showProgress />
         ))
       )}
 
-      {/* Beendet */}
       {beendet.length > 0 && (
         <>
-          <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">
-            Beendet
-          </div>
+          <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">Beendet</div>
           <div className="opacity-50">
             {beendet.map((m) => (
-              <MietCard
-                key={m.id}
-                miete={m}
-                kunde={kundenMap[m.Kunde_ID?.[0]?.id]}
-                instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]}
-              />
+              <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} />
             ))}
           </div>
         </>

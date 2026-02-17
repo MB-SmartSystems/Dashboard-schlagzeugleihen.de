@@ -1,5 +1,8 @@
+import { useMemo } from "react";
 import StatCard from "../components/StatCard";
 import DetailRow from "../components/DetailRow";
+import FilterBar from "../components/FilterBar";
+import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro } from "../utils/format";
 
 function BelegCard({ beleg, instrument }) {
@@ -44,6 +47,16 @@ export default function EinkaufView({ data }) {
 
   const totalInvest = belege.reduce((s, b) => s + (parseFloat(b.Betrag) || 0), 0);
 
+  const filterSortConfig = useMemo(() => ({
+    filters: [],
+    sorts: [
+      { key: "kaufdatum", label: "Kaufdatum", compareFn: (a, b) => (b.Kaufdatum || "").localeCompare(a.Kaufdatum || "") },
+      { key: "betrag", label: "Betrag", compareFn: (a, b) => (parseFloat(b.Betrag) || 0) - (parseFloat(a.Betrag) || 0) },
+    ],
+  }), []);
+
+  const fs = useFilterSort(belege, filterSortConfig);
+
   return (
     <div>
       <div className="flex gap-3 mb-5 overflow-x-auto">
@@ -51,18 +64,25 @@ export default function EinkaufView({ data }) {
         <StatCard label="Investiert" value={formatEuro(totalInvest)} color="red" />
       </div>
 
+      <FilterBar
+        filterConfigs={fs.filterConfigs}
+        activeFilters={fs.activeFilters}
+        onToggleFilter={fs.toggleFilter}
+        sortConfigs={fs.sortConfigs}
+        activeSort={fs.activeSort}
+        onSortChange={fs.setActiveSort}
+        hasActiveFilters={fs.hasActiveFilters}
+        onClearFilters={fs.clearFilters}
+      />
+
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
         Einkaufsbelege
       </div>
-      {belege.length === 0 ? (
+      {fs.items.length === 0 ? (
         <div className="text-center py-12 text-gray-600">Keine Einkaufsbelege.</div>
       ) : (
-        belege.map((b) => (
-          <BelegCard
-            key={b.id}
-            beleg={b}
-            instrument={instrumenteMap[b.Instrument_ID?.[0]?.id]}
-          />
+        fs.items.map((b) => (
+          <BelegCard key={b.id} beleg={b} instrument={instrumenteMap[b.Instrument_ID?.[0]?.id]} />
         ))
       )}
     </div>

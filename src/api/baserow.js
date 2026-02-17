@@ -20,6 +20,38 @@ export async function triggerWebhook(url, body) {
   return res.json();
 }
 
+export async function updateRow(tableId, rowId, fields) {
+  const res = await fetch(
+    `${BASE}/api/database/rows/table/${tableId}/${rowId}/?user_field_names=true`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Token ${TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(fields),
+    }
+  );
+  if (!res.ok) throw new Error(`Baserow PATCH Fehler ${res.status}`);
+  return res.json();
+}
+
+export async function createRow(tableId, fields) {
+  const res = await fetch(
+    `${BASE}/api/database/rows/table/${tableId}/?user_field_names=true`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(fields),
+    }
+  );
+  if (!res.ok) throw new Error(`Baserow POST Fehler ${res.status}`);
+  return res.json();
+}
+
 export const TABLE_IDS = {
   instrumente: 783,
   kunden: 784,
@@ -29,4 +61,5 @@ export const TABLE_IDS = {
   emailLog: 793,
   rechnungen: 834,
   belege: 835,
+  aufgaben: Number(import.meta.env.VITE_BASEROW_TABLE_AUFGABEN) || null,
 };
