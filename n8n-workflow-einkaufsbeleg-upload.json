@@ -1,0 +1,254 @@
+{
+  "name": "schlagzeugleihen.de - Einkaufsbeleg hochladen",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "einkaufsbeleg-upload",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "id": "a1000001-0001-4000-8000-000000000001",
+      "name": "Webhook Trigger",
+      "webhookId": "einkaufsbeleg-upload"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Einkaufsbeleg Upload – Input Parser\n// Liest die Formular-Felder aus dem multipart/form-data Request.\n// Erwartet: file (binary), beleg_row_id, instrument_id,\n//           instrument_name, dateiname\n// ============================================================\n\nconst item = $input.first();\n\n// Formular-Felder aus dem Body\nconst body = item.json.body || item.json;\nconst belegRowId = body.beleg_row_id;\nconst instrumentId = body.instrument_id;\nconst instrumentName = body.instrument_name || 'Unbekannt';\nconst dateiname = body.dateiname || 'beleg';\n\nif (!belegRowId) {\n  throw new Error('beleg_row_id fehlt im Request Body');\n}\nif (!instrumentId) {\n  throw new Error('instrument_id fehlt im Request Body');\n}\n\n// Kurzname für Ordner: z.B. \"Roland TD516 V-Drum Kit\" → \"Roland-TD516\"\nconst nameParts = instrumentName.split(' ');\nconst kurzname = nameParts.length >= 2\n  ? `${nameParts[0]}-${nameParts[1]}`\n  : nameParts[0];\nconst ordnerName = `INS-${instrumentId}-${kurzname}`;\n\n// Binary-Daten prüfen\nconst binaryKeys = Object.keys(item.binary || {});\nif (binaryKeys.length === 0) {\n  throw new Error('Keine Datei im Request gefunden');\n}\n\nconst binaryKey = binaryKeys[0];\n\nreturn [{\n  json: {\n    belegRowId,\n    instrumentId,\n    instrumentName,\n    dateiname,\n    ordnerName\n  },\n  binary: {\n    data: item.binary[binaryKey]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "id": "a1000001-0001-4000-8000-000000000002",
+      "name": "Input Parser"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "queryString": "=mimeType='application/vnd.google-apps.folder' and name contains 'INS-{{ $json.instrumentId }}-' and '1y4daEJQiqUNe1aZoeOpqkMuxMq9sFDtW' in parents and trashed=false",
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [500, 300],
+      "id": "a1000001-0001-4000-8000-000000000010",
+      "name": "Ordner suchen"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300],
+      "id": "a1000001-0001-4000-8000-000000000011",
+      "name": "Ordner existiert?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ordner gefunden – Ordner-ID + Dateiname weiterreichen\nconst ordnerSuche = $('Ordner suchen').first();\nconst inputParser = $('Input Parser').first();\n\nreturn [{\n  json: {\n    folderId: ordnerSuche.json.id,\n    dateiname: inputParser.json.dateiname,\n    belegRowId: inputParser.json.belegRowId\n  },\n  binary: inputParser.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 200],
+      "id": "a1000001-0001-4000-8000-000000000015",
+      "name": "Ordner gefunden"
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Input Parser').first().json.ordnerName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1y4daEJQiqUNe1aZoeOpqkMuxMq9sFDtW",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1000, 400],
+      "id": "a1000001-0001-4000-8000-000000000012",
+      "name": "Ordner erstellen"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Neuer Ordner erstellt – Ordner-ID + Dateiname weiterreichen\nconst neuerOrdner = $('Ordner erstellen').first();\nconst inputParser = $('Input Parser').first();\n\nreturn [{\n  json: {\n    folderId: neuerOrdner.json.id,\n    dateiname: inputParser.json.dateiname,\n    belegRowId: inputParser.json.belegRowId\n  },\n  binary: inputParser.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400],
+      "id": "a1000001-0001-4000-8000-000000000016",
+      "name": "Neuer Ordner"
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.dateiname }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.folderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1500, 300],
+      "id": "a1000001-0001-4000-8000-000000000003",
+      "name": "Google Drive Upload"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, url: $json.webViewLink, fileId: $json.id, fileName: $json.name }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1750, 300],
+      "id": "a1000001-0001-4000-8000-000000000004",
+      "name": "Webhook Response"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Input Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Parser": {
+      "main": [
+        [
+          {
+            "node": "Ordner suchen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ordner suchen": {
+      "main": [
+        [
+          {
+            "node": "Ordner existiert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ordner existiert?": {
+      "main": [
+        [
+          {
+            "node": "Ordner gefunden",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ordner erstellen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ordner gefunden": {
+      "main": [
+        [
+          {
+            "node": "Google Drive Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ordner erstellen": {
+      "main": [
+        [
+          {
+            "node": "Neuer Ordner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Neuer Ordner": {
+      "main": [
+        [
+          {
+            "node": "Google Drive Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Upload": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
