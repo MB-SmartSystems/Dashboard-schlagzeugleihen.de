@@ -3,6 +3,8 @@ import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import Modal from "../components/Modal";
 import Toast from "../components/Toast";
+import FilterBar from "../components/FilterBar";
+import { useFilterSort } from "../hooks/useFilterSort";
 import { updateRow, createRow, TABLE_IDS } from "../api/baserow";
 
 function priorityBadge(prio) {
@@ -122,19 +124,56 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
     return [...baserow, ...(derivedTasks || [])];
   }, [data.aufgaben, derivedTasks]);
 
+  /* Filter & Sort */
+  const filterSortConfig = useMemo(() => ({
+    filters: [
+      {
+        key: "prioritaet",
+        label: "Priorität",
+        accessor: (t) => t.prioritaet || "Mittel",
+        options: ["Hoch", "Mittel", "Niedrig"],
+      },
+      {
+        key: "typ",
+        label: "Typ",
+        accessor: (t) => t._derived ? "Automatisch" : (t.typ || "Manuell"),
+        options: [...new Set(allTasks.map((t) => t._derived ? "Automatisch" : (t.typ || "Manuell")))].sort(),
+      },
+    ],
+    sorts: [
+      {
+        key: "prioritaet",
+        label: "Priorität",
+        compareFn: (a, b) => {
+          const prio = { Hoch: 0, Mittel: 1, Niedrig: 2 };
+          return (prio[a.prioritaet] ?? 1) - (prio[b.prioritaet] ?? 1);
+        },
+      },
+      {
+        key: "erstellt",
+        label: "Erstellt am",
+        compareFn: (a, b) => (b.Erstellt_am || "").localeCompare(a.Erstellt_am || ""),
+      },
+    ],
+  }), [allTasks]);
+
+  const fs = useFilterSort(allTasks, filterSortConfig);
+
+  /* Filtered open/erledigt */
+  const filteredOpen = useMemo(() => fs.items.filter((t) => t.status !== "Erledigt"), [fs.items]);
+  const filteredErledigt = useMemo(() => fs.items.filter((t) => t.status === "Erledigt"), [fs.items]);
+  const visibleTasks = showErledigt ? fs.items : filteredOpen;
+
+  /* Grouped by priority (when not sorting) */
+  const grouped = useMemo(() => ({
+    hoch: visibleTasks.filter((t) => t.prioritaet === "Hoch"),
+    mittel: visibleTasks.filter((t) => t.prioritaet === "Mittel"),
+    niedrig: visibleTasks.filter((t) => t.prioritaet === "Niedrig"),
+  }), [visibleTasks]);
+
+  /* Stats (from unfiltered data) */
   const openTasks = allTasks.filter((t) => t.status !== "Erledigt");
   const erledigtTasks = allTasks.filter((t) => t.status === "Erledigt");
-
-  const grouped = useMemo(() => {
-    const source = showErledigt ? allTasks : openTasks;
-    return {
-      hoch: source.filter((t) => t.prioritaet === "Hoch"),
-      mittel: source.filter((t) => t.prioritaet === "Mittel"),
-      niedrig: source.filter((t) => t.prioritaet === "Niedrig"),
-    };
-  }, [allTasks, openTasks, showErledigt]);
-
-  /* Stats */
   const offenCount = openTasks.filter((t) => t.status === "Offen").length;
   const inArbeitCount = openTasks.filter((t) => t.status === "In Arbeit").length;
   const heuteErledigt = erledigtTasks.filter((t) => {
@@ -199,6 +238,18 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
         <StatCard label="Heute erledigt" value={heuteErledigt} color="green" />
       </div>
 
+      {/* Filter & Sort */}
+      <FilterBar
+        filterConfigs={fs.filterConfigs}
+        activeFilters={fs.activeFilters}
+        onToggleFilter={fs.toggleFilter}
+        sortConfigs={fs.sortConfigs}
+        activeSort={fs.activeSort}
+        onSortChange={fs.setActiveSort}
+        hasActiveFilters={fs.hasActiveFilters}
+        onClearFilters={fs.clearFilters}
+      />
+
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold">
@@ -222,22 +273,38 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
         </div>
       </div>
 
-      {/* Prioritätsgruppen */}
-      {grouped.hoch.length > 0 && (
-        <PriorityGroup label="Hoch" color="red" tasks={grouped.hoch}
-          onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
-      )}
-      {grouped.mittel.length > 0 && (
-        <PriorityGroup label="Mittel" color="yellow" tasks={grouped.mittel}
-          onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
-      )}
-      {grouped.niedrig.length > 0 && (
-        <PriorityGroup label="Niedrig" color="blue" tasks={grouped.niedrig}
-          onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+      {/* Task list: flat when sorted, grouped otherwise */}
+      {fs.activeSort ? (
+        visibleTasks.map((t) => (
+          <TaskCard
+            key={t._derived ? t._deriveKey : t.id}
+            task={t}
+            onStatusChange={handleStatusChange}
+            savingId={savingId}
+            setActiveTab={setActiveTab}
+          />
+        ))
+      ) : (
+        <>
+          {grouped.hoch.length > 0 && (
+            <PriorityGroup label="Hoch" color="red" tasks={grouped.hoch}
+              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+          )}
+          {grouped.mittel.length > 0 && (
+            <PriorityGroup label="Mittel" color="yellow" tasks={grouped.mittel}
+              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+          )}
+          {grouped.niedrig.length > 0 && (
+            <PriorityGroup label="Niedrig" color="blue" tasks={grouped.niedrig}
+              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+          )}
+        </>
       )}
 
-      {openTasks.length === 0 && !showErledigt && (
-        <div className="text-center py-12 text-gray-600">Keine offenen Aufgaben 🎉</div>
+      {visibleTasks.length === 0 && (
+        <div className="text-center py-12 text-gray-600">
+          {fs.hasActiveFilters ? "Keine Aufgaben mit diesen Filtern" : "Keine offenen Aufgaben"}
+        </div>
       )}
 
       {/* Neue Aufgabe Modal */}

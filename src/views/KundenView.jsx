@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { Phone, MessageCircle, Mail, MoreVertical } from "lucide-react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
@@ -35,10 +36,18 @@ function initEditValues(kunde) {
 
 function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, onCancel, editValues, setEditValues, saving }) {
   const name = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(" ") || "Unbekannt";
-  const adresse = [kunde.Adresse_Strasse, [kunde.Adresse_PLZ, kunde.Adresse_Ort].filter(Boolean).join(" ")]
-    .filter(Boolean)
-    .join(", ");
   const isEditing = editingId === kunde.id;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
@@ -48,24 +57,44 @@ function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, 
           {kunde.Firma && <div className="text-sm text-gray-500">{kunde.Firma}</div>}
         </div>
         <div className="flex flex-col items-end gap-1.5">
-          {/* Kontakt-Buttons + Edit */}
+          {/* Kontakt-Icons + Drei-Punkte-Menü */}
           <div className="flex gap-2.5 items-center">
             {kunde.Telefon && (
               <a href={`tel:${kunde.Telefon}`} title="Anrufen"
-                className="text-gray-500 hover:text-green-400 transition-colors text-sm">📞</a>
+                className="text-gray-500 hover:text-green-400 transition-colors">
+                <Phone className="w-4 h-4" />
+              </a>
             )}
             {kunde.WhatsApp && (
               <a href={`https://wa.me/${normalizeWhatsApp(kunde.WhatsApp)}`}
                 target="_blank" rel="noopener noreferrer" title="WhatsApp"
-                className="text-gray-500 hover:text-green-400 transition-colors text-sm">💬</a>
+                className="text-gray-500 hover:text-green-400 transition-colors">
+                <MessageCircle className="w-4 h-4" />
+              </a>
             )}
             {kunde.EMail && (
               <a href={`mailto:${kunde.EMail}`} title="E-Mail"
-                className="text-gray-500 hover:text-blue-400 transition-colors text-sm">✉️</a>
+                className="text-gray-500 hover:text-blue-400 transition-colors">
+                <Mail className="w-4 h-4" />
+              </a>
             )}
             {!isEditing && (
-              <button onClick={() => onEdit(kunde)} title="Bearbeiten"
-                className="text-gray-500 hover:text-orange-400 transition-colors text-sm ml-1">✏️</button>
+              <div className="relative" ref={menuRef}>
+                <button onClick={() => setMenuOpen(!menuOpen)} title="Optionen"
+                  className="text-gray-500 hover:text-orange-400 transition-colors ml-1">
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg py-1 min-w-[140px] z-30 shadow-xl">
+                    <button
+                      onClick={() => { onEdit(kunde); setMenuOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700/50 transition-colors"
+                    >
+                      Bearbeiten
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           {/* Badge */}
@@ -99,7 +128,6 @@ function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {kunde.EMail && <DetailRow label="E-Mail" value={kunde.EMail} />}
           {kunde.Telefon && <DetailRow label="Telefon" value={kunde.Telefon} />}
-          {adresse && <DetailRow label="Adresse" value={adresse} />}
           <DetailRow label="Kanal" value={selectValue(kunde.Bevorzugter_Kanal)} />
           <DetailRow label="Typ" value={selectValue(kunde.Kunde_Typ)} />
           {kunde.Notizen && <DetailRow label="Notizen" value={kunde.Notizen} />}

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { Menu, RefreshCw } from "lucide-react";
 import Tab from "./Tab";
 import { useBaserowData } from "../hooks/useBaserowData";
 import { computeDerivedTasks } from "../utils/derivedTasks";
@@ -11,12 +12,15 @@ import RechnungenView from "../views/RechnungenView";
 import EinkaufView from "../views/EinkaufView";
 import FinanzenView from "../views/FinanzenView";
 
-const TABS = [
-  { key: "aufgaben", label: "Aufgaben" },
+const MAIN_TABS = [
   { key: "mieten", label: "Mieten" },
-  { key: "instrumente", label: "Instrumente" },
+  { key: "aufgaben", label: "Aufgaben" },
   { key: "kunden", label: "Kunden" },
+  { key: "instrumente", label: "Instrumente" },
   { key: "angebote", label: "Angebote" },
+];
+
+const MORE_TABS = [
   { key: "rechnungen", label: "Rechnungen" },
   { key: "einkauf", label: "Einkauf" },
   { key: "finanzen", label: "Finanzen" },
@@ -58,7 +62,19 @@ function tabCount(key, data, derivedTasks) {
 
 export default function DashboardLayout() {
   const [activeTab, setActiveTab] = useState("aufgaben");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const { data, loading, error, lastUpdate, reload } = useBaserowData();
+
+  /* Close hamburger on outside click */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
 
   /* Abgeleitete Aufgaben berechnen */
   const derivedTasks = useMemo(() => {
@@ -75,6 +91,8 @@ export default function DashboardLayout() {
     const derivedHigh = derivedTasks.some((t) => t.prioritaet === "Hoch");
     return baserowHigh || derivedHigh;
   }, [data, derivedTasks]);
+
+  const isMoreTabActive = MORE_TABS.some((t) => t.key === activeTab);
 
   const renderView = () => {
     if (loading) {
@@ -101,7 +119,7 @@ export default function DashboardLayout() {
       case "kunden": return <KundenView data={data} reload={reload} />;
       case "angebote": return <AngeboteView data={data} reload={reload} />;
       case "rechnungen": return <RechnungenView data={data} />;
-      case "einkauf": return <EinkaufView data={data} />;
+      case "einkauf": return <EinkaufView data={data} reload={reload} />;
       case "finanzen": return <FinanzenView data={data} />;
       default: return null;
     }
@@ -120,9 +138,10 @@ export default function DashboardLayout() {
         <div className="text-right">
           <button
             onClick={reload}
-            className="border border-gray-800 bg-transparent text-gray-500 text-xs px-3.5 py-1.5 rounded-lg font-sans hover:border-orange-500 hover:text-orange-400 transition-all"
+            className="border border-gray-800 bg-transparent text-gray-500 text-xs px-3.5 py-1.5 rounded-lg font-sans hover:border-orange-500 hover:text-orange-400 transition-all inline-flex items-center gap-1.5"
           >
-            &#8635; Aktualisieren
+            <RefreshCw className="w-3.5 h-3.5" />
+            Aktualisieren
           </button>
           {lastUpdate && (
             <div className="text-[0.7rem] text-gray-600 mt-1">
@@ -137,8 +156,8 @@ export default function DashboardLayout() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-gray-900 border border-gray-800 rounded-xl p-1 overflow-x-auto">
-        {TABS.map((t) => (
+      <div className="flex gap-1 mb-5 bg-gray-900 border border-gray-800 rounded-xl p-1 items-center">
+        {MAIN_TABS.map((t) => (
           <Tab
             key={t.key}
             label={t.label}
@@ -148,6 +167,51 @@ export default function DashboardLayout() {
             badgeColor={t.key === "aufgaben" && aufgabenHasHigh ? "red" : undefined}
           />
         ))}
+
+        {/* Hamburger Menu */}
+        <div className="relative flex-shrink-0" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className={`py-2.5 px-3 rounded-lg transition-all ${
+              isMoreTabActive
+                ? "bg-orange-500/20 text-orange-400"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+            title="Weitere Tabs"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg py-1 min-w-[170px] z-30 shadow-xl">
+              {MORE_TABS.map((t) => {
+                const count = tabCount(t.key, data, derivedTasks);
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => { setActiveTab(t.key); setMenuOpen(false); }}
+                    className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-between ${
+                      activeTab === t.key
+                        ? "text-orange-400 bg-orange-500/10"
+                        : "text-gray-300 hover:bg-gray-700/50"
+                    }`}
+                  >
+                    {t.label}
+                    {count !== undefined && (
+                      <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[0.7rem] font-bold ${
+                        activeTab === t.key
+                          ? "bg-white/20 text-orange-300"
+                          : "bg-orange-500/15 text-orange-400"
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Check, X } from "lucide-react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
@@ -47,7 +48,8 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
         <DetailRow label="Monatspreis" value={formatEuro(miete.Preis_monat_EUR)} mono />
         <DetailRow label="Kaution">
           <Badge color={kautionGezahlt ? "green" : "red"}>
-            {kautionGezahlt ? "✓" : "✗"} {formatEuro(miete.Kaution_EUR)}
+            {kautionGezahlt ? <Check className="w-3 h-3 inline mr-0.5" /> : <X className="w-3 h-3 inline mr-0.5" />}
+            {formatEuro(miete.Kaution_EUR)}
           </Badge>
         </DetailRow>
         <DetailRow label="Zahlungsart" value={selectValue(miete.Zahlungsart)} />

@@ -8,7 +8,7 @@ export default function Tab({ label, count, active, onClick, badgeColor }) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+      className={`flex-1 py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
         active
           ? "bg-orange-500/20 text-orange-400"
           : "text-gray-500 hover:text-gray-300"

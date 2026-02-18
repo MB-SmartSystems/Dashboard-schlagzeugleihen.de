@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { Check, X } from "lucide-react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
@@ -72,7 +73,8 @@ function AngebotCard({ angebot, kunde, onAccept, onReject, loadingId }) {
                   Wird gesendet...
                 </span>
               ) : (
-                "✓ Annehmen"
+                <><Check className="w-3.5 h-3.5 inline mr-1" />Annehmen</>
+
               )}
             </button>
             <button
@@ -80,7 +82,7 @@ function AngebotCard({ angebot, kunde, onAccept, onReject, loadingId }) {
               disabled={isLoading}
               className="bg-red-500/15 text-red-400 border border-red-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-500/25 transition-all disabled:opacity-50"
             >
-              ✗ Ablehnen
+              <X className="w-3.5 h-3.5 inline mr-1" />Ablehnen
             </button>
           </div>
         )}
@@ -253,7 +255,7 @@ export default function AngeboteView({ data, reload }) {
               onClick={handleAcceptConfirm}
               className="bg-green-500/15 text-green-400 border border-green-500/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-500/25 transition-all"
             >
-              ✓ Annehmen & PDF erstellen
+              <Check className="w-3.5 h-3.5 inline mr-1" />Annehmen & PDF erstellen
             </button>
           </>
         }
@@ -291,7 +293,7 @@ export default function AngeboteView({ data, reload }) {
               onClick={handleRejectConfirm}
               className="bg-red-500/15 text-red-400 border border-red-500/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-500/25 transition-all"
             >
-              ✗ Ablehnen & Absage senden
+              <X className="w-3.5 h-3.5 inline mr-1" />Ablehnen & Absage senden
             </button>
           </>
         }
