@@ -12,44 +12,86 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 300],
-      "id": "a1000001-0001-4000-8000-000000000001",
+      "position": [-752, -576],
+      "id": "9805ed1d-e56e-4cf7-8f24-dcc64ff57073",
       "name": "Webhook Trigger",
       "webhookId": "einkaufsbeleg-upload"
     },
     {
       "parameters": {
-        "jsCode": "// ============================================================\n// Einkaufsbeleg Upload – Input Parser\n// Liest die Formular-Felder aus dem multipart/form-data Request.\n// Erwartet: file (binary), beleg_id, instrument_name, dateiname\n// ============================================================\n\nconst item = $input.first();\n\n// Formular-Felder aus dem Body\nconst body = item.json.body || item.json;\nconst belegId = body.beleg_id;\nconst instrumentName = body.instrument_name || 'Unbekannt';\nconst dateiname = body.dateiname || 'beleg';\n\nif (!belegId) {\n  throw new Error('beleg_id fehlt im Request Body');\n}\n\n// Kurzname für Ordner: z.B. \"Roland TD516 V-Drum Kit\" → \"Roland-TD516\"\nconst nameParts = instrumentName.trim().split(/\\s+/);\nconst kurzname = nameParts.length >= 2\n  ? `${nameParts[0]}-${nameParts[1]}`\n  : nameParts[0];\nconst ordnerName = `${kurzname}`;\n\n// Binary-Daten prüfen\nconst binaryKeys = Object.keys(item.binary || {});\nif (binaryKeys.length === 0) {\n  throw new Error('Keine Datei im Request gefunden');\n}\n\nconst binaryKey = binaryKeys[0];\n\nreturn [{\n  json: {\n    belegId,\n    instrumentName,\n    dateiname,\n    ordnerName\n  },\n  binary: {\n    data: item.binary[binaryKey]\n  }\n}];"
+        "jsCode": "// Input Parser – liest Felder aus multipart/form-data\n// Erwartet: file (binary), beleg_id, instrument_name, dateiname\nconst item = $input.first();\nconst body = item.json.body || item.json;\n\nconst belegId = body.beleg_id || null;\nconst instrumentName = body.instrument_name || 'Unbekannt';\nconst dateiname = body.dateiname || 'beleg';\n\nif (!belegId) {\n  throw new Error('beleg_id fehlt im Request Body');\n}\n\nconst binaryKeys = Object.keys(item.binary || {});\nif (binaryKeys.length === 0) {\n  throw new Error('Keine Datei im Request gefunden');\n}\n\nreturn [{\n  json: {\n    belegId,\n    instrumentName,\n    dateiname\n  },\n  binary: {\n    data: item.binary[binaryKeys[0]]\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [250, 300],
-      "id": "a1000001-0001-4000-8000-000000000002",
+      "position": [-496, -576],
+      "id": "43b5d476-dc72-4744-afff-cfc83face0bb",
       "name": "Input Parser"
     },
     {
       "parameters": {
+        "operation": "get",
+        "databaseId": 225,
+        "tableId": 835,
+        "rowId": "={{ $json.belegId }}"
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [-288, -576],
+      "id": "2cb61046-2373-443c-841a-801439aa9038",
+      "name": "Baserow Lookup",
+      "credentials": {
+        "baserowApi": {
+          "id": "sKPezxQAz7BWPIOq",
+          "name": "Baserow account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Instrument_ID aus Baserow-Beleg extrahieren + Ordnername bauen\nconst beleg = $('Baserow Lookup').first().json;\nconst inputData = $('Input Parser').first();\n\n// Baserow Link-Feld: Array mit Objekten oder IDs\nconst instrumentField = beleg.Instrument_ID;\nlet instrumentId;\n\nif (Array.isArray(instrumentField)) {\n  instrumentId = instrumentField[0]?.id || instrumentField[0];\n} else {\n  instrumentId = instrumentField;\n}\n\nif (!instrumentId) {\n  throw new Error('Keine Instrument_ID im Beleg gefunden');\n}\n\nconst instrumentName = inputData.json.instrumentName;\nconst nameParts = instrumentName.trim().split(/\\s+/);\nconst kurzname = nameParts.length >= 2\n  ? `${nameParts[0]}-${nameParts[1]}`\n  : nameParts[0];\nconst ordnerName = `INS-${instrumentId}-${kurzname}`;\n\nreturn [{\n  json: {\n    belegId: inputData.json.belegId,\n    instrumentId: String(instrumentId),\n    instrumentName,\n    dateiname: inputData.json.dateiname,\n    ordnerName\n  },\n  binary: inputData.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-80, -576],
+      "id": "a83e09c0-c7ba-47b2-ba80-1d2e529bc68b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
-        "queryString": "=mimeType='application/vnd.google-apps.folder' and name='{{ $json.ordnerName }}' and '1y4daEJQiqUNe1aZoeOpqkMuxMq9sFDtW' in parents and trashed=false",
+        "queryString": "={{ $json.ordnerName }}",
         "limit": 1,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1y4daEJQiqUNe1aZoeOpqkMuxMq9sFDtW",
+            "mode": "id"
+          }
+        },
         "options": {}
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [500, 300],
-      "id": "a1000001-0001-4000-8000-000000000010",
-      "name": "Ordner suchen"
+      "position": [176, -576],
+      "id": "57826bd1-3e28-4c8e-8766-e90eaa0a474e",
+      "name": "Ordner suchen",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Txr8uf144HqpVJHe",
+          "name": "Google Drive MB SmartSystems"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
           "options": {
-            "leftValue": "",
             "caseSensitive": true,
-            "typeValidation": "strict"
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
           },
-          "combinator": "and",
           "conditions": [
             {
               "leftValue": "={{ $json.id }}",
@@ -57,30 +99,34 @@
               "operator": {
                 "type": "string",
                 "operation": "notEmpty"
-              }
+              },
+              "id": "541d3777-ce1d-4196-a1ce-a07be261af7f"
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [750, 300],
-      "id": "a1000001-0001-4000-8000-000000000011",
+      "position": [432, -576],
+      "id": "658a3d5d-aad6-44d0-92c0-68ddf6009155",
       "name": "Ordner existiert?"
     },
     {
       "parameters": {
-        "jsCode": "// Ordner gefunden – Ordner-ID + Dateiname weiterreichen\nconst ordnerSuche = $('Ordner suchen').first();\nconst inputParser = $('Input Parser').first();\n\nreturn [{\n  json: {\n    folderId: ordnerSuche.json.id,\n    dateiname: inputParser.json.dateiname,\n    belegId: inputParser.json.belegId\n  },\n  binary: inputParser.binary\n}];"
+        "jsCode": "// Ordner gefunden – Ordner-ID + Dateiname weiterreichen\nconst ordnerSuche = $('Ordner suchen').first();\nconst inputParser = $('Code in JavaScript').first();\n\nreturn [{\n  json: {\n    folderId: ordnerSuche.json.id,\n    dateiname: inputParser.json.dateiname,\n    belegId: inputParser.json.belegId\n  },\n  binary: inputParser.binary\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 200],
-      "id": "a1000001-0001-4000-8000-000000000015",
+      "position": [672, -688],
+      "id": "69dfe40b-27cc-473c-8bdd-e79566c5f8d9",
       "name": "Ordner gefunden"
     },
     {
       "parameters": {
-        "name": "={{ $('Input Parser').first().json.ordnerName }}",
+        "resource": "folder",
+        "name": "={{ $('Code in JavaScript').first().json.ordnerName }}",
         "driveId": {
           "__rl": true,
           "mode": "list",
@@ -95,18 +141,24 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [1000, 400],
-      "id": "a1000001-0001-4000-8000-000000000012",
-      "name": "Ordner erstellen"
+      "position": [672, -480],
+      "id": "342bc92b-306b-4ee4-b7a5-0d69b6281cfa",
+      "name": "Ordner erstellen",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Txr8uf144HqpVJHe",
+          "name": "Google Drive MB SmartSystems"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// Neuer Ordner erstellt – Ordner-ID + Dateiname weiterreichen\nconst neuerOrdner = $('Ordner erstellen').first();\nconst inputParser = $('Input Parser').first();\n\nreturn [{\n  json: {\n    folderId: neuerOrdner.json.id,\n    dateiname: inputParser.json.dateiname,\n    belegId: inputParser.json.belegId\n  },\n  binary: inputParser.binary\n}];"
+        "jsCode": "// Neuer Ordner erstellt – Ordner-ID + Dateiname weiterreichen\nconst neuerOrdner = $('Ordner erstellen').first();\nconst inputParser = $('Code in JavaScript').first();\n\nreturn [{\n  json: {\n    folderId: neuerOrdner.json.id,\n    dateiname: inputParser.json.dateiname,\n    belegId: inputParser.json.belegId\n  },\n  binary: inputParser.binary\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 400],
-      "id": "a1000001-0001-4000-8000-000000000016",
+      "position": [928, -480],
+      "id": "9d2bbe70-8b81-4167-a610-4aede99d8437",
       "name": "Neuer Ordner"
     },
     {
@@ -126,9 +178,15 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [1500, 300],
-      "id": "a1000001-0001-4000-8000-000000000003",
-      "name": "Google Drive Upload"
+      "position": [1184, -576],
+      "id": "39449d48-6b01-4bef-8aef-860cbcb29ccc",
+      "name": "Google Drive Upload",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Txr8uf144HqpVJHe",
+          "name": "Google Drive MB SmartSystems"
+        }
+      }
     },
     {
       "parameters": {
@@ -138,8 +196,8 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1750, 300],
-      "id": "a1000001-0001-4000-8000-000000000004",
+      "position": [1424, -576],
+      "id": "9146eb71-b692-4974-b50f-1b69d2c51165",
       "name": "Webhook Response"
     }
   ],
@@ -156,6 +214,28 @@
       ]
     },
     "Input Parser": {
+      "main": [
+        [
+          {
+            "node": "Baserow Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baserow Lookup": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
       "main": [
         [
           {
@@ -240,6 +320,7 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
@@ -247,8 +328,11 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "tags": [],
+  "versionId": "4e348ac8-9194-4a2e-a59a-763ceb71eb06",
   "meta": {
-    "templateCredsSetupCompleted": true
-  }
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f5be6ae61f66d3f7297857905c60a41821a27a13522bb3a108bfe168aca711ba"
+  },
+  "id": "M_NC_1EAErh2lhCaRABc9",
+  "tags": []
 }
