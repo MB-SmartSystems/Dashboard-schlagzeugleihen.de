@@ -16,7 +16,7 @@ const MAIN_TABS = [
   { key: "mieten", label: "Mieten" },
   { key: "aufgaben", label: "Aufgaben" },
   { key: "kunden", label: "Kunden" },
-  { key: "instrumente", label: "Instrumente" },
+  { key: "instrumente", label: "Produkte" },
   { key: "angebote", label: "Angebote" },
 ];
 
@@ -62,9 +62,16 @@ function tabCount(key, data, derivedTasks) {
 
 export default function DashboardLayout() {
   const [activeTab, setActiveTab] = useState("aufgaben");
+  const [selectedId, setSelectedId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const { data, loading, error, lastUpdate, reload } = useBaserowData();
+
+  /* Navigate to a specific tab and optionally highlight an item */
+  const navigateTo = (tab, id = null) => {
+    setActiveTab(tab);
+    setSelectedId(id);
+  };
 
   /* Close hamburger on outside click */
   useEffect(() => {
@@ -98,7 +105,7 @@ export default function DashboardLayout() {
     if (loading) {
       return (
         <div className="text-center py-16 text-gray-500">
-          <div className="w-8 h-8 border-3 border-gray-800 border-t-orange-500 rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-3 border-gray-800 border-t-accent rounded-full animate-spin mx-auto mb-4" />
           Daten werden geladen...
         </div>
       );
@@ -114,9 +121,9 @@ export default function DashboardLayout() {
 
     switch (activeTab) {
       case "aufgaben": return <AufgabenView data={data} reload={reload} setActiveTab={setActiveTab} derivedTasks={derivedTasks} />;
-      case "mieten": return <MietenView data={data} />;
-      case "instrumente": return <InstrumenteView data={data} />;
-      case "kunden": return <KundenView data={data} reload={reload} />;
+      case "mieten": return <MietenView data={data} navigateTo={navigateTo} />;
+      case "instrumente": return <InstrumenteView data={data} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
+      case "kunden": return <KundenView data={data} reload={reload} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
       case "angebote": return <AngeboteView data={data} reload={reload} />;
       case "rechnungen": return <RechnungenView data={data} />;
       case "einkauf": return <EinkaufView data={data} reload={reload} />;
@@ -130,7 +137,7 @@ export default function DashboardLayout() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-800">
         <div>
-          <div className="font-mono text-base font-bold text-orange-400 tracking-tight">
+          <div className="font-mono text-base font-bold text-accent tracking-tight">
             schlagzeugleihen.de
           </div>
           <div className="text-[0.8rem] text-gray-500 mt-0.5">Dashboard</div>
@@ -138,7 +145,7 @@ export default function DashboardLayout() {
         <div className="text-right">
           <button
             onClick={reload}
-            className="border border-gray-800 bg-transparent text-gray-500 text-xs px-3.5 py-1.5 rounded-lg font-sans hover:border-orange-500 hover:text-orange-400 transition-all inline-flex items-center gap-1.5"
+            className="border border-gray-800 bg-transparent text-gray-500 text-xs px-3.5 py-1.5 rounded-lg font-sans hover:border-accent hover:text-accent transition-all inline-flex items-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Aktualisieren
@@ -174,7 +181,7 @@ export default function DashboardLayout() {
             onClick={() => setMenuOpen(!menuOpen)}
             className={`py-2.5 px-3 rounded-lg transition-all ${
               isMoreTabActive
-                ? "bg-orange-500/20 text-orange-400"
+                ? "bg-accent/20 text-accent"
                 : "text-gray-500 hover:text-gray-300"
             }`}
             title="Weitere Tabs"
@@ -192,7 +199,7 @@ export default function DashboardLayout() {
                     onClick={() => { setActiveTab(t.key); setMenuOpen(false); }}
                     className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-between ${
                       activeTab === t.key
-                        ? "text-orange-400 bg-orange-500/10"
+                        ? "text-accent bg-accent/10"
                         : "text-gray-300 hover:bg-gray-700/50"
                     }`}
                   >
@@ -200,8 +207,8 @@ export default function DashboardLayout() {
                     {count !== undefined && (
                       <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[0.7rem] font-bold ${
                         activeTab === t.key
-                          ? "bg-white/20 text-orange-300"
-                          : "bg-orange-500/15 text-orange-400"
+                          ? "bg-white/20 text-accent-light"
+                          : "bg-accent/15 text-accent"
                       }`}>
                         {count}
                       </span>

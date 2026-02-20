@@ -20,13 +20,13 @@ function FilterChip({ label, options, selected, onToggle }) {
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-1.5 whitespace-nowrap text-xs px-3 py-1.5 rounded-lg border transition-all ${
           activeCount > 0
-            ? "border-orange-500/50 text-orange-400 bg-orange-500/10"
+            ? "border-accent/50 text-accent bg-accent/10"
             : "border-gray-700 text-gray-400 bg-gray-800 hover:border-gray-600"
         }`}
       >
         {label}
         {activeCount > 0 && (
-          <span className="bg-orange-500/20 text-orange-300 text-[0.65rem] font-bold px-1.5 rounded-full">
+          <span className="bg-accent/20 text-accent-light text-[0.65rem] font-bold px-1.5 rounded-full">
             {activeCount}
           </span>
         )}
@@ -46,7 +46,7 @@ function FilterChip({ label, options, selected, onToggle }) {
                 type="checkbox"
                 checked={selected.includes(opt)}
                 onChange={() => onToggle(opt)}
-                className="accent-orange-500 w-3.5 h-3.5"
+                className="accent-[#0A9062] w-3.5 h-3.5"
               />
               {opt}
             </label>
@@ -96,7 +96,7 @@ export default function FilterBar({
             <select
               value={activeSort || ""}
               onChange={(e) => onSortChange(e.target.value || null)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-400 outline-none focus:border-orange-500 transition-colors appearance-none whitespace-nowrap flex-shrink-0"
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-400 outline-none focus:border-accent transition-colors appearance-none whitespace-nowrap flex-shrink-0"
             >
               <option value="">Sortierung</option>
               {sortConfigs.map((s) => (
@@ -113,12 +113,12 @@ export default function FilterBar({
           {activeTags.map((tag) => (
             <span
               key={`${tag.filterKey}-${tag.value}`}
-              className="inline-flex items-center gap-1 bg-orange-500/10 border border-orange-500/30 text-orange-300 text-[0.7rem] px-2 py-0.5 rounded-lg"
+              className="inline-flex items-center gap-1 bg-accent/10 border border-accent/30 text-accent-light text-[0.7rem] px-2 py-0.5 rounded-lg"
             >
               {tag.label}
               <button
                 onClick={() => onToggleFilter(tag.filterKey, tag.value)}
-                className="hover:text-orange-100 transition-colors ml-0.5"
+                className="hover:text-white transition-colors ml-0.5"
               >
                 ✕
               </button>

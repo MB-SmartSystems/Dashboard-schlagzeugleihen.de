@@ -1,54 +1,57 @@
-const BASE = import.meta.env.VITE_BASEROW_URL;
-const TOKEN = import.meta.env.VITE_BASEROW_TOKEN;
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    credentials: "same-origin",
+  });
+  if (res.status === 401) {
+    window.dispatchEvent(new Event("session-expired"));
+    throw new Error("Sitzung abgelaufen");
+  }
+  return res;
+}
 
 export async function fetchRows(tableId) {
-  const res = await fetch(
-    `${BASE}/api/database/rows/table/${tableId}/?user_field_names=true&size=200`,
-    { headers: { Authorization: `Token ${TOKEN}` } }
-  );
-  if (!res.ok) throw new Error(`Baserow API Fehler ${res.status}`);
+  const res = await apiFetch(`/api/baserow/rows?tableId=${tableId}&size=200`);
+  if (!res.ok) throw new Error(`API Fehler ${res.status}`);
   return (await res.json()).results;
 }
 
-export async function triggerWebhook(url, body) {
-  const res = await fetch(url, {
+export async function updateRow(tableId, rowId, fields) {
+  const res = await apiFetch("/api/baserow/row", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tableId, rowId, fields }),
+  });
+  if (!res.ok) throw new Error(`PATCH Fehler ${res.status}`);
+  return res.json();
+}
+
+export async function createRow(tableId, fields) {
+  const res = await apiFetch("/api/baserow/row", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ tableId, fields }),
+  });
+  if (!res.ok) throw new Error(`POST Fehler ${res.status}`);
+  return res.json();
+}
+
+export async function triggerWebhook(webhookName, payload) {
+  const res = await apiFetch("/api/webhook/trigger", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ webhook: webhookName, payload }),
   });
   if (!res.ok) throw new Error(`Webhook Fehler ${res.status}`);
   return res.json();
 }
 
-export async function updateRow(tableId, rowId, fields) {
-  const res = await fetch(
-    `${BASE}/api/database/rows/table/${tableId}/${rowId}/?user_field_names=true`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Token ${TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(fields),
-    }
-  );
-  if (!res.ok) throw new Error(`Baserow PATCH Fehler ${res.status}`);
-  return res.json();
-}
-
-export async function createRow(tableId, fields) {
-  const res = await fetch(
-    `${BASE}/api/database/rows/table/${tableId}/?user_field_names=true`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(fields),
-    }
-  );
-  if (!res.ok) throw new Error(`Baserow POST Fehler ${res.status}`);
+export async function uploadBeleg(formData) {
+  const res = await apiFetch("/api/upload/beleg", {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Upload Fehler ${res.status}`);
   return res.json();
 }
 
@@ -61,5 +64,5 @@ export const TABLE_IDS = {
   emailLog: 793,
   rechnungen: 834,
   belege: 835,
-  aufgaben: Number(import.meta.env.VITE_BASEROW_TABLE_AUFGABEN) || null,
+  aufgaben: 852,
 };

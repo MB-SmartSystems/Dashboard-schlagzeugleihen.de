@@ -33,7 +33,7 @@ export default function FinanzenView({ data }) {
       <div className="flex gap-3 mb-5 overflow-x-auto">
         <StatCard label="Monatlich" value={formatEuro(monatlich)} color="green" />
         <StatCard label="Jährlich" value={formatEuro(jaehrlich)} color="green" />
-        <StatCard label="Rechnungsvolumen" value={formatEuro(rechnungsVolumen)} color="orange" />
+        <StatCard label="Rechnungsvolumen" value={formatEuro(rechnungsVolumen)} color="accent" />
       </div>
 
       {/* Kautionen */}
@@ -89,7 +89,7 @@ export default function FinanzenView({ data }) {
                 return (
                   <tr key={m.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                     <td className="px-4 py-3 font-medium">{name}</td>
-                    <td className="px-4 py-3 text-right font-mono text-orange-400">
+                    <td className="px-4 py-3 text-right font-mono text-accent">
                       {formatEuro(m.Preis_monat_EUR)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono">
@@ -110,7 +110,7 @@ export default function FinanzenView({ data }) {
             <tfoot>
               <tr className="border-t border-gray-700">
                 <td className="px-4 py-3 font-semibold text-gray-400">Summe</td>
-                <td className="px-4 py-3 text-right font-mono font-bold text-orange-400">
+                <td className="px-4 py-3 text-right font-mono font-bold text-accent">
                   {formatEuro(monatlich)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono font-bold">

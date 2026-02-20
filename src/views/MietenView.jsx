@@ -8,10 +8,12 @@ import FilterBar from "../components/FilterBar";
 import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro, daysUntil, progressPercent, selectValue } from "../utils/format";
 
-function MietCard({ miete, kunde, instrument, showProgress = false }) {
+function MietCard({ miete, kunde, instrument, showProgress = false, navigateTo }) {
   const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
   const instrName = instrument?.Modellname || "Unbekannt";
   const instrTyp = instrument?.Typ || "";
+  const kundeId = miete.Kunde_ID?.[0]?.id;
+  const instrId = miete.Instrument_ID?.[0]?.id;
 
   const mietende = miete.Mietende_berechnet;
   const days = daysUntil(mietende);
@@ -31,12 +33,23 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
   const kautionGezahlt = miete.Kaution_gezahlt?.value === "Ja";
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50">
       <div className="flex justify-between items-start mb-3.5">
         <div>
-          <div className="text-[1.05rem] font-semibold">{kundeName}</div>
-          <div className="text-sm text-gray-500 mt-0.5">
-            {instrName} &middot; {instrTyp}
+          <button
+            onClick={() => navigateTo && kundeId && navigateTo("kunden", kundeId)}
+            className="text-[1.05rem] font-semibold text-left text-accent hover:underline transition-colors"
+          >
+            {kundeName}
+          </button>
+          <div className="text-sm mt-0.5">
+            <button
+              onClick={() => navigateTo && instrId && navigateTo("instrumente", instrId)}
+              className="text-gray-400 hover:text-accent hover:underline transition-colors"
+            >
+              {instrName}
+            </button>
+            <span className="text-gray-500"> &middot; {instrTyp}</span>
           </div>
         </div>
         <Badge color={badgeColor}>{badgeText}</Badge>
@@ -61,7 +74,7 @@ function MietCard({ miete, kunde, instrument, showProgress = false }) {
   );
 }
 
-export default function MietenView({ data }) {
+export default function MietenView({ data, navigateTo }) {
   const { mieten, kundenMap, instrumenteMap } = data;
 
   const filterSortConfig = useMemo(() => ({
@@ -101,7 +114,7 @@ export default function MietenView({ data }) {
     <div>
       <div className="flex gap-3 mb-5 overflow-x-auto">
         <StatCard label="Aktive Mieten" value={aktivAll.length} color="green" />
-        <StatCard label="Monatl. Einnahmen" value={formatEuro(totalRevenue)} color="orange" />
+        <StatCard label="Monatl. Einnahmen" value={formatEuro(totalRevenue)} color="accent" />
         <StatCard label="Nächstes Ende" value={nextEnd ? formatDate(nextEnd) : "–"} color="blue" />
         <StatCard label="Kaution offen" value={kautionOffen} color={kautionOffen > 0 ? "red" : "green"} />
       </div>
@@ -121,7 +134,7 @@ export default function MietenView({ data }) {
         <>
           <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">Pipeline</div>
           {pipeline.map((m) => (
-            <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} />
+            <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} navigateTo={navigateTo} />
           ))}
         </>
       )}
@@ -133,7 +146,7 @@ export default function MietenView({ data }) {
         <div className="text-center py-12 text-gray-600">Keine aktiven Mieten.</div>
       ) : (
         aktiv.map((m) => (
-          <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} showProgress />
+          <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} showProgress navigateTo={navigateTo} />
         ))
       )}
 
@@ -142,7 +155,7 @@ export default function MietenView({ data }) {
           <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">Beendet</div>
           <div className="opacity-50">
             {beendet.map((m) => (
-              <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} />
+              <MietCard key={m.id} miete={m} kunde={kundenMap[m.Kunde_ID?.[0]?.id]} instrument={instrumenteMap[m.Instrument_ID?.[0]?.id]} navigateTo={navigateTo} />
             ))}
           </div>
         </>

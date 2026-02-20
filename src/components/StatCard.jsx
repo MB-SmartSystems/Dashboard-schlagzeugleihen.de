@@ -3,7 +3,7 @@ const colorMap = {
   red: "text-red-400",
   yellow: "text-yellow-400",
   blue: "text-blue-400",
-  orange: "text-orange-400",
+  accent: "text-accent",
   purple: "text-purple-400",
   white: "text-gray-100",
 };

@@ -11,6 +11,95 @@ import { useFilterSort } from "../hooks/useFilterSort";
 import { selectValue, normalizeWhatsApp } from "../utils/format";
 import { updateRow, createRow, TABLE_IDS } from "../api/baserow";
 
+/* ── Klickbare Kontakt-Links ── */
+function ContactLink({ type, value }) {
+  if (!value) return null;
+  let href;
+  if (type === "email") href = `mailto:${value}`;
+  else if (type === "tel") href = `tel:${value}`;
+  else if (type === "whatsapp") href = `https://wa.me/${normalizeWhatsApp(value)}`;
+  return (
+    <a
+      href={href}
+      {...(type === "whatsapp" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className="text-sm text-accent hover:underline transition-colors"
+    >
+      {value}
+    </a>
+  );
+}
+
+/* ── Kanal-Feld mit Kontextmenü ── */
+function KanalLink({ kunde }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const kanal = kunde.Bevorzugter_Kanal?.value;
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  if (!kanal) return <span className="text-sm text-gray-400 mt-0.5">–</span>;
+
+  const hasTel = !!kunde.Telefon;
+  const hasWA = !!kunde.WhatsApp;
+  const hasEmail = !!kunde.EMail;
+
+  // Show context menu when both tel + WA available and kanal is one of them
+  const showMenu = (kanal === "Telefon" || kanal === "Whatsapp") && hasTel && hasWA;
+
+  if (!showMenu) {
+    let link = null;
+    if (kanal === "Telefon" && hasTel) link = `tel:${kunde.Telefon}`;
+    else if (kanal === "Whatsapp" && hasWA) link = `https://wa.me/${normalizeWhatsApp(kunde.WhatsApp)}`;
+    else if (kanal === "E-Mail" && hasEmail) link = `mailto:${kunde.EMail}`;
+
+    if (!link) return <span className="text-sm text-gray-400 mt-0.5">{kanal}</span>;
+    return (
+      <a
+        href={link}
+        {...(kanal === "Whatsapp" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        className="text-sm text-accent hover:underline transition-colors cursor-pointer"
+      >
+        {kanal}
+      </a>
+    );
+  }
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-sm text-accent hover:underline transition-colors cursor-pointer"
+      >
+        {kanal}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg py-1 min-w-[150px] z-30 shadow-xl">
+          <a
+            href={`tel:${kunde.Telefon}`}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700/50 transition-colors"
+          >
+            <Phone className="w-3.5 h-3.5" /> Anrufen
+          </a>
+          <a
+            href={`https://wa.me/${normalizeWhatsApp(kunde.WhatsApp)}`}
+            target="_blank" rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700/50 transition-colors"
+          >
+            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EMPTY_KUNDE = {
   Vorname: "", Nachname: "", Telefon: "", WhatsApp: "", EMail: "",
   Adresse_Strasse: "", Adresse_PLZ: "", Adresse_Ort: "",
@@ -34,11 +123,18 @@ function initEditValues(kunde) {
   };
 }
 
-function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, onCancel, editValues, setEditValues, saving }) {
+function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, onCancel, editValues, setEditValues, saving, isHighlighted }) {
   const name = [kunde.Vorname, kunde.Nachname].filter(Boolean).join(" ") || "Unbekannt";
   const isEditing = editingId === kunde.id;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -50,7 +146,7 @@ function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, 
   }, [menuOpen]);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
+    <div ref={cardRef} className={`bg-gray-900 border rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50 ${isHighlighted ? "border-accent ring-1 ring-accent/30" : "border-gray-800"}`}>
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold">{name}</div>
@@ -81,7 +177,7 @@ function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, 
             {!isEditing && (
               <div className="relative" ref={menuRef}>
                 <button onClick={() => setMenuOpen(!menuOpen)} title="Optionen"
-                  className="text-gray-500 hover:text-orange-400 transition-colors ml-1">
+                  className="text-gray-500 hover:text-accent transition-colors ml-1">
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 {menuOpen && (
@@ -126,9 +222,24 @@ function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, 
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {kunde.EMail && <DetailRow label="E-Mail" value={kunde.EMail} />}
-          {kunde.Telefon && <DetailRow label="Telefon" value={kunde.Telefon} />}
-          <DetailRow label="Kanal" value={selectValue(kunde.Bevorzugter_Kanal)} />
+          {kunde.EMail && (
+            <DetailRow label="E-Mail">
+              <ContactLink type="email" value={kunde.EMail} />
+            </DetailRow>
+          )}
+          {kunde.Telefon && (
+            <DetailRow label="Telefon">
+              <ContactLink type="tel" value={kunde.Telefon} />
+            </DetailRow>
+          )}
+          {kunde.WhatsApp && kunde.WhatsApp !== kunde.Telefon && (
+            <DetailRow label="WhatsApp">
+              <ContactLink type="whatsapp" value={kunde.WhatsApp} />
+            </DetailRow>
+          )}
+          <DetailRow label="Kanal">
+            <KanalLink kunde={kunde} />
+          </DetailRow>
           <DetailRow label="Typ" value={selectValue(kunde.Kunde_Typ)} />
           {kunde.Notizen && <DetailRow label="Notizen" value={kunde.Notizen} />}
         </div>
@@ -137,7 +248,7 @@ function KundeCard({ kunde, mietenCount, aktivCount, editingId, onEdit, onSave, 
   );
 }
 
-export default function KundenView({ data, reload }) {
+export default function KundenView({ data, reload, selectedId, onSelectedClear }) {
   const { kunden, mieten } = data;
 
   /* ── State ── */
@@ -148,6 +259,14 @@ export default function KundenView({ data, reload }) {
   const [newValues, setNewValues] = useState({ ...EMPTY_KUNDE });
   const [creating, setCreating] = useState(false);
   const [toast, setToast] = useState(null);
+
+  /* ── Clear selectedId after highlight animation ── */
+  useEffect(() => {
+    if (selectedId && onSelectedClear) {
+      const timer = setTimeout(() => onSelectedClear(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedId, onSelectedClear]);
 
   /* ── Miet-Maps ── */
   const mietCountMap = {};
@@ -275,6 +394,7 @@ export default function KundenView({ data, reload }) {
             editValues={editValues}
             setEditValues={setEditValues}
             saving={saving}
+            isHighlighted={selectedId === k.id}
           />
         ))
       )}

@@ -21,7 +21,7 @@ function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
   const isDerived = task._derived;
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2 transition-all hover:bg-gray-900/80 hover:border-accent/50">
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium">{task.titel}</div>
@@ -37,14 +37,14 @@ function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
               value={task.status}
               onChange={(e) => onStatusChange(task, e.target.value)}
               disabled={isLoading}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 outline-none focus:border-orange-500 transition-colors disabled:opacity-50"
+              className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 outline-none focus:border-accent transition-colors disabled:opacity-50"
             >
               <option value="Offen">Offen</option>
               <option value="In Arbeit">In Arbeit</option>
               <option value="Erledigt">Erledigt</option>
             </select>
           ) : (
-            <Badge color="orange">Offen</Badge>
+            <Badge color="accent">Offen</Badge>
           )}
         </div>
       </div>
@@ -227,13 +227,13 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
   };
 
   const inputClass =
-    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-orange-500 transition-colors";
+    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors";
 
   return (
     <div>
       {/* Stats */}
       <div className="flex gap-3 mb-5 overflow-x-auto">
-        <StatCard label="Offen" value={offenCount} color="orange" />
+        <StatCard label="Offen" value={offenCount} color="accent" />
         <StatCard label="In Arbeit" value={inArbeitCount} color="blue" />
         <StatCard label="Heute erledigt" value={heuteErledigt} color="green" />
       </div>
@@ -265,7 +265,7 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
           {TABLE_IDS.aufgaben && (
             <button
               onClick={() => setShowNewModal(true)}
-              className="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3.5 py-1.5 rounded-lg hover:bg-orange-500/25 transition-all"
+              className="bg-accent/15 text-accent border border-accent/30 text-xs font-semibold px-3.5 py-1.5 rounded-lg hover:bg-accent/25 transition-all"
             >
               + Neue Aufgabe
             </button>
@@ -319,7 +319,7 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
               Abbrechen
             </button>
             <button onClick={handleCreate} disabled={creating || !newTitel.trim()}
-              className="text-xs font-semibold text-orange-400 bg-orange-500/15 border border-orange-500/30 px-3.5 py-2 rounded-lg hover:bg-orange-500/25 transition-all disabled:opacity-50">
+              className="text-xs font-semibold text-accent bg-accent/15 border border-accent/30 px-3.5 py-2 rounded-lg hover:bg-accent/25 transition-all disabled:opacity-50">
               {creating ? "Erstellen…" : "Erstellen"}
             </button>
           </>

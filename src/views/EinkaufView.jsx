@@ -1,17 +1,15 @@
 import { useState, useMemo, useRef } from "react";
-import { Paperclip, ExternalLink, Plus, X as XIcon } from "lucide-react";
+import { Paperclip, ExternalLink, Plus, X as XIcon, Search, Check, Loader2, FileText, ChevronDown } from "lucide-react";
 import StatCard from "../components/StatCard";
 import DetailRow from "../components/DetailRow";
 import FilterBar from "../components/FilterBar";
 import Toast from "../components/Toast";
 import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro } from "../utils/format";
-import { updateRow, createRow, TABLE_IDS } from "../api/baserow";
-
-const WEBHOOK_BELEG_UPLOAD = import.meta.env.VITE_N8N_WEBHOOK_BELEG_UPLOAD;
+import { updateRow, createRow, uploadBeleg, triggerWebhook, TABLE_IDS } from "../api/baserow";
 
 const inputClass =
-  "w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-orange-500 transition-colors";
+  "w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors";
 
 /* ── Single Beleg Card ──────────────────────────────────────────── */
 function BelegCard({ beleg, instrument, onUpload, uploadingId }) {
@@ -25,7 +23,7 @@ function BelegCard({ beleg, instrument, onUpload, uploadingId }) {
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50">
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold">{beleg.Beschreibung || "–"}</div>
@@ -55,7 +53,7 @@ function BelegCard({ beleg, instrument, onUpload, uploadingId }) {
             <ExternalLink className="w-3.5 h-3.5" />
             Beleg anzeigen
           </a>
-        ) : WEBHOOK_BELEG_UPLOAD ? (
+        ) : (
           <>
             <input
               ref={fileInputRef}
@@ -67,11 +65,11 @@ function BelegCard({ beleg, instrument, onUpload, uploadingId }) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="inline-flex items-center gap-1.5 text-xs text-orange-400 bg-orange-500/10 border border-orange-500/30 px-3 py-1.5 rounded-lg hover:bg-orange-500/20 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-xs text-accent bg-accent/10 border border-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all disabled:opacity-50"
             >
               {isUploading ? (
                 <>
-                  <span className="w-3 h-3 border-2 border-orange-400/30 border-t-orange-400 rounded-full animate-spin" />
+                  <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                   Wird hochgeladen...
                 </>
               ) : (
@@ -82,7 +80,7 @@ function BelegCard({ beleg, instrument, onUpload, uploadingId }) {
               )}
             </button>
           </>
-        ) : null}
+        )}
       </div>
     </div>
   );
@@ -174,8 +172,7 @@ function NeuBelegModal({ instrument, onClose, onSave, saving }) {
           </div>
 
           {/* Datei-Upload */}
-          {WEBHOOK_BELEG_UPLOAD && (
-            <div>
+          <div>
               <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-1">
                 Beleg-Datei (optional)
               </label>
@@ -188,7 +185,7 @@ function NeuBelegModal({ instrument, onClose, onSave, saving }) {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 text-sm text-gray-400 bg-gray-800 border border-gray-700 border-dashed rounded-lg py-3 hover:border-orange-500/50 hover:text-orange-400 transition-all"
+                className="w-full flex items-center justify-center gap-2 text-sm text-gray-400 bg-gray-800 border border-gray-700 border-dashed rounded-lg py-3 hover:border-accent/50 hover:text-accent transition-all"
               >
                 <Paperclip className="w-4 h-4" />
                 {file ? file.name : "Datei auswählen (PDF, JPG, PNG)"}
@@ -205,7 +202,6 @@ function NeuBelegModal({ instrument, onClose, onSave, saving }) {
                 </div>
               )}
             </div>
-          )}
         </div>
 
         <div className="flex gap-3 mt-6">
@@ -218,7 +214,7 @@ function NeuBelegModal({ instrument, onClose, onSave, saving }) {
           <button
             onClick={handleSubmit}
             disabled={saving || !form.Beschreibung.trim()}
-            className="flex-1 py-2.5 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-accent rounded-lg hover:bg-accent-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
               <>
@@ -230,6 +226,464 @@ function NeuBelegModal({ instrument, onClose, onSave, saving }) {
             )}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── AI Beleg-Upload Modal ─────────────────────────────────────── */
+function AIBelegModal({ instrumente, belege, onClose, onSaved }) {
+  const fileInputRef = useRef(null);
+  const [step, setStep] = useState(1); // 1=upload, 2=analyzing, 3=confirm
+  const [selectedInstrumentId, setSelectedInstrumentId] = useState("");
+  const [file, setFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [analyseResult, setAnalyseResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [instrumentStatus, setInstrumentStatus] = useState("keine");
+
+  // Existing Händler for dropdown suggestions
+  const haendlerList = useMemo(() => {
+    const set = new Set();
+    belege.forEach((b) => { if (b.Händler) set.add(b.Händler.trim()); });
+    return [...set].sort();
+  }, [belege]);
+
+  // Active instruments for dropdown
+  const activeInstrumente = useMemo(() =>
+    instrumente
+      .filter((i) => i.Verfügbar?.value !== "Inaktiv" && i.Zustand?.value !== "Ausgemustert / inaktiv")
+      .sort((a, b) => (a.Modellname || "").localeCompare(b.Modellname || "")),
+    [instrumente]
+  );
+
+  const handleFileChange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f);
+    setError(null);
+    // Create preview for images
+    if (f.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setFilePreview(ev.target.result);
+      reader.readAsDataURL(f);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const handleAnalyse = async () => {
+    if (!selectedInstrumentId || !file) return;
+    setStep(2);
+    setError(null);
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const media_type = file.type || "application/octet-stream";
+
+      const result = await triggerWebhook("beleg_analyse", { base64, media_type, filename: file.name });
+
+      // Expect: { haendler, kaufdatum, artikel: [{beschreibung, betrag}], gesamt_betrag }
+      const parsed = result.haendler ? result : (result.data || result.result || result);
+
+      setAnalyseResult({
+        haendler: parsed.haendler || "",
+        kaufdatum: parsed.kaufdatum || new Date().toISOString().split("T")[0],
+        artikel: (parsed.artikel || []).map((a, idx) => ({
+          id: idx,
+          selected: true,
+          beschreibung: a.beschreibung || "",
+          betrag: String(a.betrag || "0"),
+        })),
+        gesamt_betrag: parsed.gesamt_betrag || null,
+      });
+      setStep(3);
+    } catch (e) {
+      setError(e.message);
+      setStep(1);
+    }
+  };
+
+  const updateArtikel = (idx, field, value) => {
+    setAnalyseResult((prev) => ({
+      ...prev,
+      artikel: prev.artikel.map((a, i) =>
+        i === idx ? { ...a, [field]: value } : a
+      ),
+    }));
+  };
+
+  const toggleArtikel = (idx) => {
+    setAnalyseResult((prev) => ({
+      ...prev,
+      artikel: prev.artikel.map((a, i) =>
+        i === idx ? { ...a, selected: !a.selected } : a
+      ),
+    }));
+  };
+
+  const gesamtBerechnet = analyseResult
+    ? analyseResult.artikel
+        .filter((a) => a.selected)
+        .reduce((s, a) => s + (parseFloat(a.betrag) || 0), 0)
+    : 0;
+
+  const handleSave = async () => {
+    if (!analyseResult) return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      const instId = Number(selectedInstrumentId);
+      const selectedArtikel = analyseResult.artikel.filter((a) => a.selected);
+
+      if (selectedArtikel.length === 0) {
+        setError("Bitte mindestens einen Artikel auswählen.");
+        setSaving(false);
+        return;
+      }
+
+      // Step 1: Upload file once via n8n webhook → get URL
+      let driveUrl = null;
+      if (file) {
+        const instrument = instrumente.find((i) => i.id === instId);
+        const ext = file.name.split(".").pop();
+        const dateiname = `Beleg_${analyseResult.haendler.replace(/\s/g, "-")}_${analyseResult.kaufdatum || "unbekannt"}.${ext}`;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("beleg_id", "ai-upload");
+        formData.append("instrument_name", instrument?.Modellname || "Unbekannt");
+        formData.append("dateiname", dateiname);
+
+        try {
+          const uploadResult = await uploadBeleg(formData);
+          driveUrl = uploadResult.url || uploadResult.webViewLink;
+        } catch {
+          // Upload failed, continue without URL
+        }
+      }
+
+      // Step 2: Create one row per selected article in table 835
+      const createdRows = [];
+      for (const artikel of selectedArtikel) {
+        const newRow = await createRow(TABLE_IDS.belege, {
+          Beschreibung: artikel.beschreibung.trim(),
+          Händler: analyseResult.haendler.trim(),
+          Kaufdatum: analyseResult.kaufdatum || null,
+          Betrag: artikel.betrag || null,
+          Instrument_ID: [instId],
+        });
+        createdRows.push(newRow);
+      }
+
+      // Step 3: Patch Beleg_URL for all created rows (same URL)
+      if (driveUrl) {
+        for (const row of createdRows) {
+          await updateRow(TABLE_IDS.belege, row.id, { Beleg_URL: driveUrl });
+        }
+      }
+
+      // Step 4: Optional instrument status update
+      if (instrumentStatus !== "keine") {
+        const statusMap = { lagernd: 3061, vermietet: 3062 };
+        const statusId = statusMap[instrumentStatus];
+        if (statusId) {
+          await updateRow(TABLE_IDS.instrumente, instId, { Verfügbar: statusId });
+        }
+      }
+
+      onSaved(`${createdRows.length} Beleg${createdRows.length > 1 ? "e" : ""} gespeichert`);
+    } catch (e) {
+      setError(`Fehler beim Speichern: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={onClose}>
+      <div
+        className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold">
+              {step === 1 && "Beleg analysieren"}
+              {step === 2 && "Wird analysiert..."}
+              {step === 3 && "Ergebnis prüfen"}
+            </h3>
+            <div className="text-sm text-gray-500 mt-0.5">
+              {step === 1 && "Wähle ein Instrument und lade einen Beleg hoch"}
+              {step === 2 && "Claude liest den Beleg aus"}
+              {step === 3 && "Prüfe und korrigiere die erkannten Daten"}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Step 1: Instrument + File Upload */}
+        {step === 1 && (
+          <div className="space-y-4">
+            {/* Instrument Dropdown */}
+            <div>
+              <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                Instrument *
+              </label>
+              <div className="relative">
+                <select
+                  className={`${inputClass} appearance-none pr-8`}
+                  value={selectedInstrumentId}
+                  onChange={(e) => setSelectedInstrumentId(e.target.value)}
+                >
+                  <option value="">Instrument wählen...</option>
+                  {activeInstrumente.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.Modellname} (INS-{i.Instrument_ID})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                Beleg-Datei *
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-2 text-sm text-gray-400 bg-gray-800 border border-gray-700 border-dashed rounded-lg py-6 hover:border-accent/50 hover:text-accent transition-all"
+              >
+                {file ? (
+                  <>
+                    {filePreview ? (
+                      <img src={filePreview} alt="Preview" className="max-h-32 rounded-lg border border-gray-700" />
+                    ) : (
+                      <FileText className="w-8 h-8 text-accent" />
+                    )}
+                    <span className="text-accent font-medium">{file.name}</span>
+                    <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(0)} KB</span>
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="w-6 h-6" />
+                    <span>PDF, JPG oder PNG hochladen</span>
+                  </>
+                )}
+              </button>
+              {file && (
+                <button
+                  onClick={() => { setFile(null); setFilePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="text-xs text-red-400 hover:underline mt-1.5"
+                >
+                  Datei entfernen
+                </button>
+              )}
+            </div>
+
+            {error && (
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleAnalyse}
+                disabled={!selectedInstrumentId || !file}
+                className="flex-1 py-2.5 text-sm font-semibold text-white bg-accent rounded-lg hover:bg-accent-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Search className="w-4 h-4" />
+                Analysieren
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* Step 2: Analyzing (Loading) */}
+        {step === 2 && (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <Loader2 className="w-10 h-10 text-accent animate-spin" />
+            <div className="text-sm text-gray-400">Beleg wird von AI analysiert...</div>
+            <div className="text-xs text-gray-600">Dies kann einige Sekunden dauern</div>
+          </div>
+        )}
+
+        {/* Step 3: Confirm & Edit Results */}
+        {step === 3 && analyseResult && (
+          <div className="space-y-4">
+            {/* Händler */}
+            <div>
+              <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                Händler
+              </label>
+              <input
+                className={inputClass}
+                value={analyseResult.haendler}
+                onChange={(e) => setAnalyseResult((prev) => ({ ...prev, haendler: e.target.value }))}
+                list="haendler-list"
+              />
+              <datalist id="haendler-list">
+                {haendlerList.map((h) => <option key={h} value={h} />)}
+              </datalist>
+            </div>
+
+            {/* Kaufdatum */}
+            <div>
+              <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                Kaufdatum
+              </label>
+              <input
+                className={inputClass}
+                type="date"
+                value={analyseResult.kaufdatum}
+                onChange={(e) => setAnalyseResult((prev) => ({ ...prev, kaufdatum: e.target.value }))}
+              />
+            </div>
+
+            {/* Artikel-Liste */}
+            <div>
+              <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                Erkannte Artikel
+              </label>
+              <div className="space-y-2">
+                {analyseResult.artikel.map((a, idx) => (
+                  <div
+                    key={a.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
+                      a.selected
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-gray-800/30 border-gray-800 opacity-50"
+                    }`}
+                  >
+                    <button
+                      onClick={() => toggleArtikel(idx)}
+                      className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                        a.selected
+                          ? "bg-accent border-accent text-white"
+                          : "border-gray-600 text-transparent"
+                      }`}
+                    >
+                      <Check className="w-3 h-3" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <input
+                        className="w-full bg-transparent text-sm text-gray-200 outline-none placeholder-gray-600"
+                        value={a.beschreibung}
+                        onChange={(e) => updateArtikel(idx, "beschreibung", e.target.value)}
+                        placeholder="Beschreibung"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <input
+                        className="w-20 bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm text-right font-mono text-gray-200 outline-none focus:border-accent"
+                        value={a.betrag}
+                        onChange={(e) => updateArtikel(idx, "betrag", e.target.value)}
+                        type="number"
+                        step="0.01"
+                      />
+                      <span className="text-xs text-gray-500">€</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Gesamtbetrag */}
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-800">
+                <span className="text-sm text-gray-500">Gesamtbetrag</span>
+                <span className="text-sm font-mono font-bold text-accent">
+                  {formatEuro(gesamtBerechnet)}
+                </span>
+              </div>
+            </div>
+
+            {/* Instrument-Status Option */}
+            <div>
+              <label className="block text-[0.7rem] text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                Instrument-Status aktualisieren
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { key: "keine", label: "Keine Änderung" },
+                  { key: "lagernd", label: "Lagernd" },
+                  { key: "vermietet", label: "Vermietet" },
+                ].map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setInstrumentStatus(opt.key)}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                      instrumentStatus === opt.key
+                        ? "bg-accent/15 border-accent/30 text-accent"
+                        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => { setStep(1); setAnalyseResult(null); setError(null); }}
+                className="flex-1 py-2.5 text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Zurück
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || analyseResult.artikel.filter((a) => a.selected).length === 0}
+                className="flex-1 py-2.5 text-sm font-semibold text-white bg-accent rounded-lg hover:bg-accent-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Speichern...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    {analyseResult.artikel.filter((a) => a.selected).length} Beleg{analyseResult.artikel.filter((a) => a.selected).length > 1 ? "e" : ""} speichern
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -271,7 +725,7 @@ function InstrumentGroup({ instrument, belegeForInstrument, onAddBeleg, onUpload
         )}
         <button
           onClick={() => onAddBeleg(instrument)}
-          className="inline-flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 border border-orange-500/30 px-2.5 py-1 rounded-lg hover:bg-orange-500/20 transition-all ml-auto"
+          className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 border border-accent/30 px-2.5 py-1 rounded-lg hover:bg-accent/20 transition-all ml-auto"
         >
           <Plus className="w-3.5 h-3.5" />
           Beleg hinzufügen
@@ -288,6 +742,7 @@ export default function EinkaufView({ data, reload }) {
   const [uploadingId, setUploadingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [modalInstrument, setModalInstrument] = useState(null);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const totalInvest = belege.reduce((s, b) => s + (parseFloat(b.Betrag) || 0), 0);
 
@@ -343,7 +798,7 @@ export default function EinkaufView({ data, reload }) {
       });
 
       // Schritt 2: Datei hochladen (wenn vorhanden)
-      if (file && WEBHOOK_BELEG_UPLOAD) {
+      if (file) {
         const ext = file.name.split(".").pop();
         const dateiname = `Beleg-${newRow.Beleg_ID || newRow.id}_${form.Händler.trim().replace(/\s/g, "-")}_${form.Kaufdatum || "unbekannt"}.${ext}`;
 
@@ -353,14 +808,7 @@ export default function EinkaufView({ data, reload }) {
         formData.append("instrument_name", instrument.Modellname || "Unbekannt");
         formData.append("dateiname", dateiname);
 
-        const res = await fetch(WEBHOOK_BELEG_UPLOAD, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) throw new Error(`Upload Fehler ${res.status}`);
-
-        const result = await res.json();
+        const result = await uploadBeleg(formData);
         const driveUrl = result.url || result.webViewLink;
 
         // Schritt 3: URL in die NEUE Row schreiben (einzelner String, kein Array!)
@@ -392,14 +840,7 @@ export default function EinkaufView({ data, reload }) {
       formData.append("instrument_name", instrument?.Modellname || "Unbekannt");
       formData.append("dateiname", dateiname);
 
-      const res = await fetch(WEBHOOK_BELEG_UPLOAD, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error(`Upload Fehler ${res.status}`);
-
-      const result = await res.json();
+      const result = await uploadBeleg(formData);
       const driveUrl = result.url || result.webViewLink;
 
       if (driveUrl) {
@@ -417,9 +858,18 @@ export default function EinkaufView({ data, reload }) {
 
   return (
     <div>
-      <div className="flex gap-3 mb-5 overflow-x-auto">
-        <StatCard label="Belege" value={belege.length} color="white" />
-        <StatCard label="Investiert" value={formatEuro(totalInvest)} color="red" />
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex gap-3 overflow-x-auto flex-1">
+          <StatCard label="Belege" value={belege.length} color="white" />
+          <StatCard label="Investiert" value={formatEuro(totalInvest)} color="red" />
+        </div>
+        <button
+          onClick={() => setShowAIModal(true)}
+          className="flex items-center gap-2 text-sm font-semibold text-white bg-accent px-4 py-2.5 rounded-xl hover:bg-accent-dark transition-colors flex-shrink-0"
+        >
+          <Search className="w-4 h-4" />
+          AI-Upload
+        </button>
       </div>
 
       <FilterBar
@@ -475,13 +925,27 @@ export default function EinkaufView({ data, reload }) {
         </>
       )}
 
-      {/* Modal */}
+      {/* Manual Modal */}
       {modalInstrument && (
         <NeuBelegModal
           instrument={modalInstrument}
           onClose={() => setModalInstrument(null)}
           onSave={handleSaveBeleg}
           saving={saving}
+        />
+      )}
+
+      {/* AI Upload Modal */}
+      {showAIModal && (
+        <AIBelegModal
+          instrumente={instrumente}
+          belege={belege}
+          onClose={() => setShowAIModal(false)}
+          onSaved={(msg) => {
+            setShowAIModal(false);
+            setToast({ message: msg + " ✓", type: "success" });
+            reload();
+          }}
         />
       )}
 

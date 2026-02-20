@@ -2,15 +2,15 @@ export default function Tab({ label, count, active, onClick, badgeColor }) {
   const badgeClasses = badgeColor === "red"
     ? "bg-red-500/20 text-red-400"
     : active
-      ? "bg-white/20 text-orange-300"
-      : "bg-orange-500/15 text-orange-400";
+      ? "bg-white/20 text-accent-light"
+      : "bg-accent/15 text-accent";
 
   return (
     <button
       onClick={onClick}
       className={`flex-1 py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
         active
-          ? "bg-orange-500/20 text-orange-400"
+          ? "bg-accent/20 text-accent"
           : "text-gray-500 hover:text-gray-300"
       }`}
     >

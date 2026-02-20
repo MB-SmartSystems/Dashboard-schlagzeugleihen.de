@@ -21,7 +21,7 @@ function RechnungCard({ rechnung, kunde }) {
   const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50">
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold font-mono">
@@ -86,7 +86,7 @@ export default function RechnungenView({ data }) {
     <div>
       <div className="flex gap-3 mb-5 overflow-x-auto">
         <StatCard label="Rechnungen" value={rechnungen.length} color="white" />
-        <StatCard label="Volumen" value={formatEuro(volumen)} color="orange" />
+        <StatCard label="Volumen" value={formatEuro(volumen)} color="accent" />
       </div>
 
       <FilterBar

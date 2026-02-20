@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
@@ -26,13 +26,23 @@ function zustandBadge(val) {
   }
 }
 
-function InstrumentCard({ instr }) {
+function InstrumentCard({ instr, isHighlighted, instrumenteMap }) {
   const mietpreis = instr.Mietpreis_monat?.[0]?.value;
   const kaution = instr.Kaution?.[0]?.value;
   const mietkauf = instr.Mietkaufpreis?.[0]?.value;
+  const cardRef = useRef(null);
+
+  // Zugehörige Teile aus Link-Feld lesen
+  const zugehoerigTeile = instr["Zugehörige_Teile"] || instr.Zugehoerige_Teile || [];
+
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-orange-500/50">
+    <div ref={cardRef} className={`bg-gray-900 border rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50 ${isHighlighted ? "border-accent ring-1 ring-accent/30" : "border-gray-800"}`}>
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold">{instr.Modellname || "Unbekannt"}</div>
@@ -57,12 +67,39 @@ function InstrumentCard({ instr }) {
           </DetailRow>
         )}
       </div>
+
+      {/* Zugehörige Teile */}
+      {zugehoerigTeile.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-800/50">
+          <div className="text-[0.7rem] text-gray-500 uppercase tracking-wide mb-2">Zugehörige Teile</div>
+          <div className="space-y-1">
+            {zugehoerigTeile.map((teil) => {
+              const teilData = instrumenteMap?.[teil.id];
+              const verfuegbar = teilData?.Verfügbar?.value;
+              return (
+                <div key={teil.id} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-300">{teil.value || teilData?.Modellname || "Unbekannt"}</span>
+                  {verfuegbar && verfuegbarBadge(verfuegbar)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default function InstrumenteView({ data }) {
-  const { instrumente } = data;
+export default function InstrumenteView({ data, selectedId, onSelectedClear }) {
+  const { instrumente, instrumenteMap } = data;
+
+  /* Clear selectedId after highlight */
+  useEffect(() => {
+    if (selectedId && onSelectedClear) {
+      const timer = setTimeout(() => onSelectedClear(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedId, onSelectedClear]);
 
   const typOptions = useMemo(() =>
     [...new Set(instrumente.map((i) => i.Typ).filter(Boolean))].sort(),
@@ -130,7 +167,7 @@ export default function InstrumenteView({ data }) {
       {aktiv.length === 0 ? (
         <div className="text-center py-12 text-gray-600">Keine Instrumente.</div>
       ) : (
-        aktiv.map((i) => <InstrumentCard key={i.id} instr={i} />)
+        aktiv.map((i) => <InstrumentCard key={i.id} instr={i} isHighlighted={selectedId === i.id} instrumenteMap={instrumenteMap} />)
       )}
 
       {inaktiv.length > 0 && (
@@ -139,7 +176,7 @@ export default function InstrumenteView({ data }) {
             Inaktiv / Ausgemustert
           </div>
           <div className="opacity-40">
-            {inaktiv.map((i) => <InstrumentCard key={i.id} instr={i} />)}
+            {inaktiv.map((i) => <InstrumentCard key={i.id} instr={i} isHighlighted={selectedId === i.id} instrumenteMap={instrumenteMap} />)}
           </div>
         </>
       )}
