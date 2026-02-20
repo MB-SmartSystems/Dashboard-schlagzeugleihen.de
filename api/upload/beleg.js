@@ -1,4 +1,4 @@
-const { requireAuth } = require("../_lib/auth");
+import { requireAuth } from "../_lib/auth.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") {
@@ -43,5 +43,6 @@ async function handler(req, res) {
   return res.status(apiRes.status).json(data);
 }
 
-module.exports = handler;
-module.exports.config = { api: { bodyParser: false } };
+export default handler;
+
+export const config = { api: { bodyParser: false } };

@@ -1,9 +1,9 @@
-const { requireAuth } = require("../_lib/auth");
-const { baserowFetch } = require("../_lib/baserow");
+import { requireAuth } from "../_lib/auth.js";
+import { baserowFetch } from "../_lib/baserow.js";
 
 const ALLOWED_TABLES = [783, 784, 785, 786, 787, 793, 834, 835, 852];
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -23,4 +23,4 @@ module.exports = async function handler(req, res) {
 
   const data = await apiRes.json();
   return res.status(apiRes.status).json(data);
-};
+}

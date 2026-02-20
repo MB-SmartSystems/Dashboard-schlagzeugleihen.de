@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+import crypto from "crypto";
 
 const COOKIE_NAME = "session";
 const MAX_AGE = 7 * 24 * 60 * 60; // 7 days
@@ -29,17 +29,17 @@ function verify(token) {
   }
 }
 
-function createSessionCookie() {
+export function createSessionCookie() {
   const now = Math.floor(Date.now() / 1000);
   const token = sign({ sub: "dashboard", iat: now, exp: now + MAX_AGE });
   return `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${MAX_AGE}`;
 }
 
-function clearSessionCookie() {
+export function clearSessionCookie() {
   return `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`;
 }
 
-function getSession(req) {
+export function getSession(req) {
   const cookies = req.headers.cookie || "";
   const match = cookies
     .split(";")
@@ -50,7 +50,7 @@ function getSession(req) {
   return verify(token);
 }
 
-function requireAuth(req, res) {
+export function requireAuth(req, res) {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Nicht authentifiziert" });
@@ -58,5 +58,3 @@ function requireAuth(req, res) {
   }
   return true;
 }
-
-module.exports = { createSessionCookie, clearSessionCookie, getSession, requireAuth };

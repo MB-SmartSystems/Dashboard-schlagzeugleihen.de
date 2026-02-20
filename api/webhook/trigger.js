@@ -1,4 +1,4 @@
-const { requireAuth } = require("../_lib/auth");
+import { requireAuth } from "../_lib/auth.js";
 
 const WEBHOOK_MAP = {
   angebot_erstellen: () => process.env.N8N_WEBHOOK_ANGEBOT_ERSTELLEN,
@@ -6,7 +6,7 @@ const WEBHOOK_MAP = {
   beleg_analyse: () => process.env.N8N_WEBHOOK_BELEG_ANALYSE,
 };
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -33,4 +33,4 @@ module.exports = async function handler(req, res) {
 
   const data = await apiRes.json();
   return res.status(apiRes.status).json(data);
-};
+}

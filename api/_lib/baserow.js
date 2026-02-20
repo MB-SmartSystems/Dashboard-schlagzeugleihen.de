@@ -1,4 +1,4 @@
-async function baserowFetch(path, options = {}) {
+export async function baserowFetch(path, options = {}) {
   const url = `${process.env.BASEROW_URL}${path}`;
   const headers = {
     Authorization: `Token ${process.env.BASEROW_TOKEN}`,
@@ -9,5 +9,3 @@ async function baserowFetch(path, options = {}) {
   }
   return fetch(url, { ...options, headers });
 }
-
-module.exports = { baserowFetch };

@@ -1,6 +1,6 @@
-const { getSession } = require("../_lib/auth");
+import { getSession } from "../_lib/auth.js";
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -11,4 +11,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(200).json({ authenticated: true });
-};
+}

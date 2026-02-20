@@ -1,5 +1,5 @@
-const crypto = require("crypto");
-const { createSessionCookie } = require("../_lib/auth");
+import crypto from "crypto";
+import { createSessionCookie } from "../_lib/auth.js";
 
 // Simple per-instance rate limiting (resets on cold start, which is acceptable)
 const attempts = new Map();
@@ -17,7 +17,7 @@ function isRateLimited(ip) {
   return entry.count > MAX_ATTEMPTS;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -47,4 +47,4 @@ module.exports = async function handler(req, res) {
 
   res.setHeader("Set-Cookie", createSessionCookie());
   return res.status(200).json({ ok: true });
-};
+}
