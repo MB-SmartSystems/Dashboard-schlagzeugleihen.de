@@ -21,6 +21,11 @@ export default async function handler(req, res) {
     `/api/database/rows/table/${tableId}/?user_field_names=true&size=${size}`
   );
 
+  if (!apiRes.ok) {
+    console.error("Baserow rows error:", apiRes.status);
+    return res.status(502).json({ error: "Daten konnten nicht geladen werden" });
+  }
+
   const data = await apiRes.json();
-  return res.status(apiRes.status).json(data);
+  return res.status(200).json(data);
 }

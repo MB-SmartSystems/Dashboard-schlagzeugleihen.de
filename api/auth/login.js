@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  const ip = req.headers["x-real-ip"] || req.socket?.remoteAddress || "unknown";
   if (isRateLimited(ip)) {
     return res.status(429).json({ error: "Zu viele Versuche. Bitte später erneut versuchen." });
   }

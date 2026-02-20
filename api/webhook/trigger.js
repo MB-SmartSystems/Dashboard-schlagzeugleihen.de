@@ -31,6 +31,11 @@ export default async function handler(req, res) {
     body: JSON.stringify(payload),
   });
 
+  if (!apiRes.ok) {
+    console.error("Webhook error:", webhook, apiRes.status);
+    return res.status(502).json({ error: "Webhook konnte nicht ausgeführt werden" });
+  }
+
   const data = await apiRes.json();
-  return res.status(apiRes.status).json(data);
+  return res.status(200).json(data);
 }
