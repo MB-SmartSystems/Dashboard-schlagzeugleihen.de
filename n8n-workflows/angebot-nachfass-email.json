@@ -1,0 +1,237 @@
+{
+  "name": "Angebot-Nachfass-E-Mail",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Täglich 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/787/?user_field_names=true&size=200",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "load-angebote",
+      "name": "Angebote laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-status",
+              "leftValue": "={{ $json.Status.value }}",
+              "rightValue": "versendet",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-versendet",
+      "name": "Filter: Status = versendet",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-no-miete",
+              "leftValue": "={{ $json.Mieten.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-no-miete",
+      "name": "Filter: Keine Miete verknüpft",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prüfe ob Angebotsdatum + 10 Tage <= heute\nconst items = $input.all();\nconst result = [];\nconst heute = new Date();\nheute.setHours(0, 0, 0, 0);\n\nfor (const item of items) {\n  const datum = item.json.Angebotsdatum;\n  if (!datum) continue;\n  \n  const angebotsDatum = new Date(datum);\n  angebotsDatum.setDate(angebotsDatum.getDate() + 10);\n  \n  if (heute >= angebotsDatum) {\n    result.push(item);\n  }\n}\n\nreturn result;"
+      },
+      "id": "check-10-days",
+      "name": "Prüfe: Angebotsdatum + 10 Tage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/793/?user_field_names=true&size=200&filters={{encodeURIComponent(JSON.stringify({filter_type:'AND',filters:[{type:'link_row_has',field:'Kunden_ID',value:$json.Kunden_ID[0].id}]}))}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "check-emaillog",
+      "name": "EmailLog prüfen (Duplikat-Check)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      },
+      "notes": "Prüft ob bereits eine Nachfass-Mail für diesen Kunden gesendet wurde. Email_Type 'Angebot_Nachfass' muss als Option in Baserow Tabelle 793 hinzugefügt werden."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filtere: Nur Items wo noch KEIN EmailLog-Eintrag mit passendem Typ existiert\nconst items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  const logs = item.json.results || [];\n  // Prüfe ob ein Log mit Email_Type 'Angebot_Nachfass' existiert\n  const hasNachfass = logs.some(log => \n    log.Email_Type && log.Email_Type.value === 'Angebot_Nachfass'\n  );\n  if (!hasNachfass) {\n    result.push(item);\n  }\n}\n\nreturn result;"
+      },
+      "id": "filter-no-duplicate",
+      "name": "Duplikat-Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/784/{{ $json.Kunden_ID[0].id }}/?user_field_names=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "load-kunde",
+      "name": "Kundendaten laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "info@schlagzeugleihen.de",
+        "toEmail": "info@schlagzeugleihen.de",
+        "subject": "=Nachfassen: Angebot {{ $('check-10-days').item.json.Angebotsnummer }} an {{ $json.Vorname }} {{ $json.Nachname }}",
+        "emailType": "text",
+        "message": "=Hallo {{ $json.Vorname }},\n\nich wollte kurz nachfragen, ob du dir das Angebot anschauen konntest und ob es noch Fragen gibt.\n\nFalls du dich schon entschieden hast oder sich die Situation geändert hat, gib mir gerne kurz Bescheid. Dann weiß ich, wie es weitergeht.\n\nViele Grüße\nManuel"
+      },
+      "id": "send-email",
+      "name": "Nachfass-E-Mail senden",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1760, 0],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIALS_ID",
+          "name": "Gmail info@schlagzeugleihen.de"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/793/?user_field_names=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"Kunden_ID\": [{{ $('check-10-days').item.json.Kunden_ID[0].id }}],\n  \"Email_Type\": \"ANGEBOT_NACHFASS_OPTION_ID\",\n  \"Status\": 3122,\n  \"Sent_at\": \"{{ $now.format('yyyy-MM-dd') }}\",\n  \"Subject\": \"Nachfassen: Angebot {{ $('check-10-days').item.json.Angebotsnummer }} an {{ $json.Vorname }} {{ $json.Nachname }}\",\n  \"Email_Body\": \"Nachfass-Mail gesendet\"\n}",
+        "options": {}
+      },
+      "id": "create-emaillog",
+      "name": "EmailLog-Eintrag erstellen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      },
+      "notes": "HINWEIS: 'ANGEBOT_NACHFASS_OPTION_ID' muss durch die tatsächliche Option-ID ersetzt werden, nachdem der neue Email_Type 'Angebot_Nachfass' in Baserow Tabelle 793 angelegt wurde."
+    }
+  ],
+  "connections": {
+    "Täglich 09:00": {
+      "main": [[{ "node": "Angebote laden", "type": "main", "index": 0 }]]
+    },
+    "Angebote laden": {
+      "main": [[{ "node": "Filter: Status = versendet", "type": "main", "index": 0 }]]
+    },
+    "Filter: Status = versendet": {
+      "main": [[{ "node": "Filter: Keine Miete verknüpft", "type": "main", "index": 0 }]]
+    },
+    "Filter: Keine Miete verknüpft": {
+      "main": [[{ "node": "Prüfe: Angebotsdatum + 10 Tage", "type": "main", "index": 0 }]]
+    },
+    "Prüfe: Angebotsdatum + 10 Tage": {
+      "main": [[{ "node": "EmailLog prüfen (Duplikat-Check)", "type": "main", "index": 0 }]]
+    },
+    "EmailLog prüfen (Duplikat-Check)": {
+      "main": [[{ "node": "Duplikat-Filter", "type": "main", "index": 0 }]]
+    },
+    "Duplikat-Filter": {
+      "main": [[{ "node": "Kundendaten laden", "type": "main", "index": 0 }]]
+    },
+    "Kundendaten laden": {
+      "main": [[{ "node": "Nachfass-E-Mail senden", "type": "main", "index": 0 }]]
+    },
+    "Nachfass-E-Mail senden": {
+      "main": [[{ "node": "EmailLog-Eintrag erstellen", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "AP 9: Angebot-Nachfass-E-Mail – Täglich um 09:00 prüfen ob versendete Angebote seit 10+ Tagen ohne Reaktion sind. Sendet Erinnerung an info@schlagzeugleihen.de.\n\nVORAUSSETZUNGEN:\n1. Neuer Email_Type 'Angebot_Nachfass' muss in Baserow Tabelle 793 als Option angelegt werden\n2. Die Option-ID muss im Node 'EmailLog-Eintrag erstellen' eingetragen werden\n3. Baserow HTTP Header Auth Credentials konfigurieren\n4. Gmail OAuth2 Credentials konfigurieren\n5. BASEROW_URL Environment-Variable in n8n setzen"
+  }
+}

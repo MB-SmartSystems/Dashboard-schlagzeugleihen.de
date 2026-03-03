@@ -124,5 +124,57 @@ export function computeDerivedTasks(data) {
     }
   });
 
+  /* ── Trigger 4: Offenes Angebot noch nicht versendet ── */
+  angebote.forEach((a) => {
+    const status = a.Status?.value;
+    if (status !== "offen") return;
+    const kunde = kundenMap[a.Kunden_ID?.[0]?.id];
+    const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
+    tasks.push({
+      _derived: true,
+      _deriveKey: `versenden-${a.id}`,
+      titel: `Angebot versenden: ${a.Angebotsnummer || a.Angebot_ID} – ${kundeName}`,
+      typ: "Manuell",
+      prioritaet: "Hoch",
+      status: "Offen",
+      quelle: "Automatisch",
+      angebotId: a.id,
+      kundeId: a.Kunden_ID?.[0]?.id || null,
+      instrumentId: null,
+    });
+  });
+
+  /* ── Trigger 5: Versendetes Angebot ohne Reaktion ── */
+  angebote.forEach((a) => {
+    if (a.Status?.value !== "versendet") return;
+    const hasMiete = (a.Mieten || []).length > 0 || mietAngebotIds.has(a.id);
+    if (hasMiete) return;
+    const kunde = kundenMap[a.Kunden_ID?.[0]?.id];
+    const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
+
+    // Priorität: Hoch wenn Gueltig_bis < 3 Tage oder überschritten
+    let prioritaet = "Mittel";
+    if (a.Gueltig_bis) {
+      const gueltigBis = new Date(a.Gueltig_bis);
+      const heute = new Date();
+      heute.setHours(0, 0, 0, 0);
+      const diffTage = Math.ceil((gueltigBis - heute) / (1000 * 60 * 60 * 24));
+      if (diffTage < 3) prioritaet = "Hoch";
+    }
+
+    tasks.push({
+      _derived: true,
+      _deriveKey: `offen-${a.id}`,
+      titel: `Angebot offen: ${a.Angebotsnummer || a.Angebot_ID} – Annehmen oder Ablehnen?`,
+      typ: "Manuell",
+      prioritaet,
+      status: "Offen",
+      quelle: "Automatisch",
+      angebotId: a.id,
+      kundeId: a.Kunden_ID?.[0]?.id || null,
+      instrumentId: null,
+    });
+  });
+
   return tasks;
 }

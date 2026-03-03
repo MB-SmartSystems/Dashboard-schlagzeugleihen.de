@@ -1,0 +1,262 @@
+{
+  "name": "Miet-Follow-Up-E-Mails",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Täglich 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/785/?user_field_names=true&size=200",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "load-mieten",
+      "name": "Mieten laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter: Nur aktive Mieten (Aktiv, Verlängert, unbefristet)\nconst items = $input.all();\nconst result = [];\nconst activeStatuses = ['Aktiv', 'Verlängert', 'unbefristet'];\n\nfor (const item of items) {\n  const status = item.json.Status?.value;\n  if (activeStatuses.includes(status)) {\n    result.push(item);\n  }\n}\n\nreturn result;"
+      },
+      "id": "filter-active",
+      "name": "Filter: Aktive Mieten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Berechne welche E-Mails heute fällig sind\nconst items = $input.all();\nconst result = [];\nconst heute = new Date();\nheute.setHours(0, 0, 0, 0);\n\nfor (const item of items) {\n  const mietbeginn = item.json.Mietbeginn;\n  const mietendeBerechnet = item.json.Mietende_berechnet;\n  const mietId = item.json.id;\n  const kundeId = item.json.Kunde_ID?.[0]?.id;\n  const instrumentId = item.json.Instrument_ID?.[0]?.id;\n  \n  if (!kundeId) continue;\n  \n  // Woche 1: Mietbeginn + 7 Tage\n  if (mietbeginn) {\n    const woche1 = new Date(mietbeginn);\n    woche1.setDate(woche1.getDate() + 7);\n    woche1.setHours(0, 0, 0, 0);\n    if (heute.getTime() === woche1.getTime()) {\n      result.push({\n        json: {\n          ...item.json,\n          _emailType: 'Woche 1',\n          _emailTypeId: 3118,\n          _kundeId: kundeId,\n          _instrumentId: instrumentId,\n          _mietId: mietId\n        }\n      });\n    }\n  }\n  \n  // Pre_end_14d: Mietende - 14 Tage\n  if (mietendeBerechnet) {\n    const pre14 = new Date(mietendeBerechnet);\n    pre14.setDate(pre14.getDate() - 14);\n    pre14.setHours(0, 0, 0, 0);\n    if (heute.getTime() === pre14.getTime()) {\n      result.push({\n        json: {\n          ...item.json,\n          _emailType: 'Pre_end_14d',\n          _emailTypeId: 3120,\n          _kundeId: kundeId,\n          _instrumentId: instrumentId,\n          _mietId: mietId\n        }\n      });\n    }\n  }\n  \n  // Pre_end_2d: Mietende - 2 Tage\n  if (mietendeBerechnet) {\n    const pre2 = new Date(mietendeBerechnet);\n    pre2.setDate(pre2.getDate() - 2);\n    pre2.setHours(0, 0, 0, 0);\n    if (heute.getTime() === pre2.getTime()) {\n      result.push({\n        json: {\n          ...item.json,\n          _emailType: 'Pre_end_2d',\n          _emailTypeId: 3121,\n          _kundeId: kundeId,\n          _instrumentId: instrumentId,\n          _mietId: mietId\n        }\n      });\n    }\n  }\n}\n\nreturn result;"
+      },
+      "id": "check-dates",
+      "name": "Zeitpunkte prüfen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/793/?user_field_names=true&size=200&filters={{encodeURIComponent(JSON.stringify({filter_type:'AND',filters:[{type:'link_row_has',field:'Miet_ID',value:$json._mietId},{type:'single_select_equal',field:'Email_Type',value:$json._emailTypeId}]}))}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "check-emaillog",
+      "name": "EmailLog Duplikat-Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "no-existing-log",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-no-duplicate",
+      "name": "Filter: Noch nicht gesendet",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/784/{{ $('check-dates').item.json._kundeId }}/?user_field_names=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "load-kunde",
+      "name": "Kundendaten laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/783/{{ $('check-dates').item.json._instrumentId }}/?user_field_names=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "load-instrument",
+      "name": "Instrumentdaten laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByPosition": {
+          "join": "inner"
+        },
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Daten zusammenführen",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1540, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Erstelle E-Mail basierend auf Typ\nconst items = $input.all();\nconst result = [];\nconst GOOGLE_BEWERTUNGS_LINK = 'GOOGLE_BEWERTUNGS_LINK_HIER_EINTRAGEN';\n\nfor (const item of items) {\n  const emailType = item.json._emailType;\n  const vorname = item.json.Vorname || 'Kunde';\n  const nachname = item.json.Nachname || '';\n  const instrumentName = item.json.Modellname || 'Instrument';\n  const mietendeRaw = item.json.Mietende_berechnet;\n  const mietende = mietendeRaw ? new Date(mietendeRaw).toLocaleDateString('de-DE') : '–';\n  const mietkaufpreis = item.json.Mietkaufpreis?.[0]?.value || '–';\n  \n  let subject = '';\n  let body = '';\n  \n  if (emailType === 'Woche 1') {\n    subject = `Check-in: ${vorname} ${nachname} – ${instrumentName} (1 Woche)`;\n    body = `Hallo ${vorname},\\n\\ndas Set steht jetzt eine Woche bei dir. Ich wollte kurz nachfragen, ob alles passt und du gut zurechtkommst.\\n\\nFalls irgendwas nicht funktioniert oder du Fragen hast, melde dich einfach.\\n\\nWenn du zufrieden bist, würde ich mich über eine kurze Google-Bewertung freuen. Das hilft mir sehr und dauert nur eine Minute:\\n${GOOGLE_BEWERTUNGS_LINK}\\n\\nViele Grüße\\nManuel`;\n  } else if (emailType === 'Pre_end_14d') {\n    subject = `Mietende in 14 Tagen: ${vorname} ${nachname} – ${instrumentName}`;\n    body = `Hallo ${vorname},\\n\\nkurze Info: Deine Mietzeit für das ${instrumentName} endet am ${mietende}.\\n\\nDu hast drei Möglichkeiten:\\n- Weitermieten (Laufzeit verlängern)\\n- Mietkauf (bisherige Mieten werden angerechnet, Kaufpreis: ${mietkaufpreis} €)\\n- Rückgabe\\n\\nSag mir einfach kurz Bescheid, wie du es machen möchtest. Dann kümmere ich mich um alles Weitere.\\n\\nViele Grüße\\nManuel`;\n  } else if (emailType === 'Pre_end_2d') {\n    subject = `Mietende übermorgen: ${vorname} ${nachname} – ${instrumentName}`;\n    body = `Hallo ${vorname},\\n\\nnur als kurze Erinnerung: Die Mietzeit für das ${instrumentName} endet am ${mietende}.\\n\\nFalls du weitermieten oder kaufen möchtest, melde dich bitte zeitnah bei mir, damit wir alles rechtzeitig klären können.\\n\\nViele Grüße\\nManuel`;\n  }\n  \n  result.push({\n    json: {\n      ...item.json,\n      _subject: subject,\n      _body: body\n    }\n  });\n}\n\nreturn result;"
+      },
+      "id": "build-email",
+      "name": "E-Mail-Text erstellen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "info@schlagzeugleihen.de",
+        "toEmail": "info@schlagzeugleihen.de",
+        "subject": "={{ $json._subject }}",
+        "emailType": "text",
+        "message": "={{ $json._body }}"
+      },
+      "id": "send-email",
+      "name": "E-Mail senden",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1980, 100],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIALS_ID",
+          "name": "Gmail info@schlagzeugleihen.de"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BASEROW_URL}}/api/database/rows/table/793/?user_field_names=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"Kunden_ID\": [{{ $('check-dates').item.json._kundeId }}],\n  \"Miet_ID\": [{{ $('check-dates').item.json._mietId }}],\n  \"Email_Type\": {{ $('check-dates').item.json._emailTypeId }},\n  \"Status\": 3122,\n  \"Sent_at\": \"{{ $now.format('yyyy-MM-dd') }}\",\n  \"Subject\": {{ JSON.stringify($json._subject) }},\n  \"Email_Body\": {{ JSON.stringify($json._body) }}\n}",
+        "options": {}
+      },
+      "id": "create-emaillog",
+      "name": "EmailLog-Eintrag erstellen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BASEROW_CREDENTIALS_ID",
+          "name": "Baserow Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Täglich 09:00": {
+      "main": [[{ "node": "Mieten laden", "type": "main", "index": 0 }]]
+    },
+    "Mieten laden": {
+      "main": [[{ "node": "Filter: Aktive Mieten", "type": "main", "index": 0 }]]
+    },
+    "Filter: Aktive Mieten": {
+      "main": [[{ "node": "Zeitpunkte prüfen", "type": "main", "index": 0 }]]
+    },
+    "Zeitpunkte prüfen": {
+      "main": [[{ "node": "EmailLog Duplikat-Check", "type": "main", "index": 0 }]]
+    },
+    "EmailLog Duplikat-Check": {
+      "main": [[{ "node": "Filter: Noch nicht gesendet", "type": "main", "index": 0 }]]
+    },
+    "Filter: Noch nicht gesendet": {
+      "main": [
+        [
+          { "node": "Kundendaten laden", "type": "main", "index": 0 },
+          { "node": "Instrumentdaten laden", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Kundendaten laden": {
+      "main": [[{ "node": "Daten zusammenführen", "type": "main", "index": 0 }]]
+    },
+    "Instrumentdaten laden": {
+      "main": [[{ "node": "Daten zusammenführen", "type": "main", "index": 1 }]]
+    },
+    "Daten zusammenführen": {
+      "main": [[{ "node": "E-Mail-Text erstellen", "type": "main", "index": 0 }]]
+    },
+    "E-Mail-Text erstellen": {
+      "main": [[{ "node": "E-Mail senden", "type": "main", "index": 0 }]]
+    },
+    "E-Mail senden": {
+      "main": [[{ "node": "EmailLog-Eintrag erstellen", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "AP 10: Miet-Follow-Up-E-Mails – Täglich um 09:00 drei Zeitpunkte prüfen:\n1. Woche 1 (Mietbeginn + 7 Tage): Zufriedenheits-Check + Google-Bewertungslink\n2. 14 Tage vor Mietende: Optionen (Weitermieten/Mietkauf/Rückgabe)\n3. 2 Tage vor Mietende: Letzte Erinnerung\n\nVORAUSSETZUNGEN:\n1. Baserow HTTP Header Auth Credentials konfigurieren\n2. Gmail OAuth2 Credentials konfigurieren\n3. BASEROW_URL Environment-Variable in n8n setzen\n4. GOOGLE_BEWERTUNGS_LINK im Code-Node 'E-Mail-Text erstellen' ersetzen\n5. Credentials-IDs in allen HTTP-Nodes anpassen"
+  }
+}

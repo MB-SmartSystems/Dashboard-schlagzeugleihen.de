@@ -49,7 +49,7 @@ function tabCount(key, data, derivedTasks) {
       return data.kunden.length;
     case "angebote":
       return data.angebote.filter((a) =>
-        ["offen", "versendet"].includes(a.Status?.value)
+        ["offen", "angenommen", "zu versenden", "versendet"].includes(a.Status?.value)
       ).length;
     case "rechnungen":
       return data.rechnungen.length;

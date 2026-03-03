@@ -3,6 +3,8 @@ import { requireAuth } from "../_lib/auth.js";
 const WEBHOOK_MAP = {
   angebot_erstellen: () => process.env.N8N_WEBHOOK_ANGEBOT_ERSTELLEN,
   angebot_ablehnen: () => process.env.N8N_WEBHOOK_ANGEBOT_ABLEHNEN,
+  absage_senden: () => process.env.N8N_WEBHOOK_ABSAGE_SENDEN,
+  angebot_angenommen: () => process.env.N8N_WEBHOOK_ANGEBOT_ANGENOMMEN,
   beleg_analyse: () => process.env.N8N_WEBHOOK_BELEG_ANALYSE,
 };
 
