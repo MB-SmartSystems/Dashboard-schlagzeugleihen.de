@@ -229,6 +229,31 @@ function computeExpectedTasks(data) {
   return expected;
 }
 
+/**
+ * Returns true only for tasks that were created by the dashboard's own sync logic.
+ * Tasks created by n8n or manually must NOT be auto-closed, even if Quelle=Auto.
+ */
+function isDashboardManaged(a) {
+  const title = a.Titel || "";
+  const typ = a.Typ?.id;
+  const hasAngebot = linkIds(a["Verknüpfung_Angebot"] || a.Verknuepfung_Angebot).length > 0;
+  const hasInstrument = linkIds(a["Verknüpfung_Instrument"] || a.Verknuepfung_Instrument).length > 0;
+
+  // Trigger 1: Defektes Instrument
+  if (typ === OPT.TYP_VORBEREITEN && hasInstrument && title.startsWith("Defektes Instrument:")) return true;
+  // Trigger 2: Fehlendes Zubehör
+  if (typ === OPT.TYP_ZUBEHOER && hasInstrument && title.startsWith("Zubehör fehlt:")) return true;
+  // Trigger 3a/3b: Angebot angenommen → Instrument vorbereiten / Bestellen
+  if (typ === OPT.TYP_VORBEREITEN && hasAngebot && title.includes(" Angebot ")) return true;
+  if (typ === OPT.TYP_BESTELLEN && hasAngebot && title.startsWith("Bestellen:")) return true;
+  // Trigger 4: Offenes Angebot versenden
+  if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Angebot versenden:")) return true;
+  // Trigger 5: Versendetes Angebot nachfassen
+  if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Angebot nachfassen:")) return true;
+
+  return false;
+}
+
 export async function syncTasksToBaserow(data, existingAufgaben) {
   if (!TABLE) return;
 
@@ -247,8 +272,10 @@ export async function syncTasksToBaserow(data, existingAufgaben) {
     }
   }
 
-  // Auto-close tasks whose trigger no longer fires
+  // Auto-close tasks whose trigger no longer fires.
+  // Only touch tasks created by the dashboard's own sync (not n8n or manual).
   for (const a of autoOpen) {
+    if (!isDashboardManaged(a)) continue;
     const stillExpected = expected.some((task) => task.matchExisting(a));
     if (!stillExpected) {
       ops.push(
