@@ -17,8 +17,8 @@ function priorityBadge(prio) {
 }
 
 function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
-  const isLoading = savingId === (task._derived ? task._deriveKey : task.id);
-  const isDerived = task._derived;
+  const isLoading = savingId === task.id;
+  const isAuto = task.quelle === "Automatisch";
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2 transition-all hover:bg-gray-900/80 hover:border-accent/50">
@@ -30,22 +30,18 @@ function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {isDerived && <Badge color="purple">Auto</Badge>}
+          <Badge color={isAuto ? "purple" : "gray"}>{isAuto ? "AUTO" : "MANUELL"}</Badge>
           {priorityBadge(task.prioritaet)}
-          {!isDerived ? (
-            <select
-              value={task.status}
-              onChange={(e) => onStatusChange(task, e.target.value)}
-              disabled={isLoading}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 outline-none focus:border-accent transition-colors disabled:opacity-50"
-            >
-              <option value="Offen">Offen</option>
-              <option value="In Arbeit">In Arbeit</option>
-              <option value="Erledigt">Erledigt</option>
-            </select>
-          ) : (
-            <Badge color="accent">Offen</Badge>
-          )}
+          <select
+            value={task.status}
+            onChange={(e) => onStatusChange(task, e.target.value)}
+            disabled={isLoading}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-300 outline-none focus:border-accent transition-colors disabled:opacity-50"
+          >
+            <option value="Offen">Offen</option>
+            <option value="In Arbeit">In Arbeit</option>
+            <option value="Erledigt">Erledigt</option>
+          </select>
         </div>
       </div>
 
@@ -86,7 +82,7 @@ function PriorityGroup({ label, color, tasks, onStatusChange, savingId, setActiv
       </div>
       {tasks.map((t) => (
         <TaskCard
-          key={t._derived ? t._deriveKey : t.id}
+          key={t.id}
           task={t}
           onStatusChange={onStatusChange}
           savingId={savingId}
@@ -97,7 +93,7 @@ function PriorityGroup({ label, color, tasks, onStatusChange, savingId, setActiv
   );
 }
 
-export default function AufgabenView({ data, reload, setActiveTab, derivedTasks }) {
+export default function AufgabenView({ data, reload, setActiveTab }) {
   const [showErledigt, setShowErledigt] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitel, setNewTitel] = useState("");
@@ -107,11 +103,10 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
   const [savingId, setSavingId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  /* Alle Tasks zusammenführen */
+  /* Alle Tasks aus Baserow 852 */
   const allTasks = useMemo(() => {
-    const baserow = (data.aufgaben || []).map((t) => ({
+    return (data.aufgaben || []).map((t) => ({
       ...t,
-      _derived: false,
       titel: t.Titel || "",
       typ: t.Typ?.value || "Manuell",
       prioritaet: t.Priorität?.value || t.Prioritaet?.value || "Mittel",
@@ -121,8 +116,7 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
       kundeId: t.Verknüpfung_Kunde?.[0]?.id || t.Verknuepfung_Kunde?.[0]?.id || null,
       instrumentId: t.Verknüpfung_Instrument?.[0]?.id || t.Verknuepfung_Instrument?.[0]?.id || null,
     }));
-    return [...baserow, ...(derivedTasks || [])];
-  }, [data.aufgaben, derivedTasks]);
+  }, [data.aufgaben]);
 
   /* Filter & Sort */
   const filterSortConfig = useMemo(() => ({
@@ -136,8 +130,8 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
       {
         key: "typ",
         label: "Typ",
-        accessor: (t) => t._derived ? "Automatisch" : (t.typ || "Manuell"),
-        options: [...new Set(allTasks.map((t) => t._derived ? "Automatisch" : (t.typ || "Manuell")))].sort(),
+        accessor: (t) => t.typ || "Manuell",
+        options: [...new Set(allTasks.map((t) => t.typ || "Manuell"))].sort(),
       },
     ],
     sorts: [
@@ -183,7 +177,7 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
 
   /* Status ändern */
   const handleStatusChange = async (task, newStatus) => {
-    if (task._derived || !TABLE_IDS.aufgaben) return;
+    if (!TABLE_IDS.aufgaben) return;
     setSavingId(task.id);
     try {
       const fields = { Status: newStatus };
@@ -277,7 +271,7 @@ export default function AufgabenView({ data, reload, setActiveTab, derivedTasks 
       {fs.activeSort ? (
         visibleTasks.map((t) => (
           <TaskCard
-            key={t._derived ? t._deriveKey : t.id}
+            key={t.id}
             task={t}
             onStatusChange={handleStatusChange}
             savingId={savingId}

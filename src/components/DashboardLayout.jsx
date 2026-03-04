@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { Menu, RefreshCw } from "lucide-react";
 import Tab from "./Tab";
 import { useBaserowData } from "../hooks/useBaserowData";
-import { computeDerivedTasks } from "../utils/derivedTasks";
 import AufgabenView from "../views/AufgabenView";
 import MietenView from "../views/MietenView";
 import InstrumenteView from "../views/InstrumenteView";
@@ -26,15 +25,11 @@ const MORE_TABS = [
   { key: "finanzen", label: "Finanzen" },
 ];
 
-function tabCount(key, data, derivedTasks) {
+function tabCount(key, data) {
   if (!data) return undefined;
   switch (key) {
-    case "aufgaben": {
-      const baserowOpen = (data.aufgaben || []).filter(
-        (a) => a.Status?.value !== "Erledigt"
-      ).length;
-      return baserowOpen + (derivedTasks || []).length;
-    }
+    case "aufgaben":
+      return (data.aufgaben || []).filter((a) => a.Status?.value !== "Erledigt").length;
     case "mieten": {
       const aktiv = data.mieten.filter((m) =>
         ["Aktiv", "Verlängert", "unbefristet"].includes(m.Status?.value)
@@ -66,7 +61,6 @@ export default function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const { data, loading, error, lastUpdate, reload } = useBaserowData();
-
   /* Navigate to a specific tab and optionally highlight an item */
   const navigateTo = (tab, id = null) => {
     setActiveTab(tab);
@@ -83,21 +77,13 @@ export default function DashboardLayout() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
 
-  /* Abgeleitete Aufgaben berechnen */
-  const derivedTasks = useMemo(() => {
-    if (!data) return [];
-    return computeDerivedTasks(data);
-  }, [data]);
-
   /* Aufgaben-Badge rot wenn Hoch-Prio */
   const aufgabenHasHigh = useMemo(() => {
     if (!data) return false;
-    const baserowHigh = (data.aufgaben || []).some(
+    return (data.aufgaben || []).some(
       (a) => a.Status?.value !== "Erledigt" && (a.Priorität?.value === "Hoch" || a.Prioritaet?.value === "Hoch")
     );
-    const derivedHigh = derivedTasks.some((t) => t.prioritaet === "Hoch");
-    return baserowHigh || derivedHigh;
-  }, [data, derivedTasks]);
+  }, [data]);
 
   const isMoreTabActive = MORE_TABS.some((t) => t.key === activeTab);
 
@@ -120,7 +106,7 @@ export default function DashboardLayout() {
     if (!data) return null;
 
     switch (activeTab) {
-      case "aufgaben": return <AufgabenView data={data} reload={reload} setActiveTab={setActiveTab} derivedTasks={derivedTasks} />;
+      case "aufgaben": return <AufgabenView data={data} reload={reload} setActiveTab={setActiveTab} />;
       case "mieten": return <MietenView data={data} navigateTo={navigateTo} />;
       case "instrumente": return <InstrumenteView data={data} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
       case "kunden": return <KundenView data={data} reload={reload} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
@@ -168,7 +154,7 @@ export default function DashboardLayout() {
           <Tab
             key={t.key}
             label={t.label}
-            count={tabCount(t.key, data, derivedTasks)}
+            count={tabCount(t.key, data)}
             active={activeTab === t.key}
             onClick={() => setActiveTab(t.key)}
             badgeColor={t.key === "aufgaben" && aufgabenHasHigh ? "red" : undefined}
@@ -192,7 +178,7 @@ export default function DashboardLayout() {
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg py-1 min-w-[170px] z-30 shadow-xl">
               {MORE_TABS.map((t) => {
-                const count = tabCount(t.key, data, derivedTasks);
+                const count = tabCount(t.key, data);
                 return (
                   <button
                     key={t.key}

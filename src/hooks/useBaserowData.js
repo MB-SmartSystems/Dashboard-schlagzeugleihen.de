@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchRows, TABLE_IDS } from "../api/baserow";
+import { syncTasksToBaserow } from "../utils/syncTasks";
 
 export function useBaserowData() {
   const [data, setData] = useState(null);
@@ -25,8 +26,15 @@ export function useBaserowData() {
       const instrumenteMap = {};
       tables.instrumente.forEach((i) => (instrumenteMap[i.id] = i));
 
-      setData({ ...tables, kundenMap, instrumenteMap });
+      const fullData = { ...tables, kundenMap, instrumenteMap };
+      setData(fullData);
       setLastUpdate(new Date());
+
+      // Non-blocking: sync auto-tasks → then reload only aufgaben
+      syncTasksToBaserow(fullData, tables.aufgaben)
+        .then(() => fetchRows(TABLE_IDS.aufgaben))
+        .then((aufgaben) => setData((prev) => prev ? { ...prev, aufgaben } : prev))
+        .catch(() => {});
     } catch (e) {
       setError(e.message);
     } finally {
