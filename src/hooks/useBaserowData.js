@@ -46,5 +46,12 @@ export function useBaserowData() {
     load();
   }, [load]);
 
-  return { data, loading, error, lastUpdate, reload: load };
+  const reloadAufgaben = useCallback(async () => {
+    try {
+      const aufgaben = await fetchRows(TABLE_IDS.aufgaben);
+      setData((prev) => (prev ? { ...prev, aufgaben } : prev));
+    } catch (_) {}
+  }, []);
+
+  return { data, loading, error, lastUpdate, reload: load, reloadAufgaben };
 }

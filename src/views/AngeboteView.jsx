@@ -157,7 +157,7 @@ function AngebotCard({
   );
 }
 
-export default function AngeboteView({ data, reload }) {
+export default function AngeboteView({ data, reload, reloadAufgaben }) {
   const { angebote, kundenMap } = data;
 
   /* ── Modal states ── */
@@ -250,6 +250,7 @@ export default function AngeboteView({ data, reload }) {
       await triggerWebhook("angebot_angenommen", { angebot_id: angebotId });
       showToast(`Angebot #${angebotId} – Kunde hat angenommen.`);
       reload();
+      reloadAufgaben();
     } catch (e) {
       showToast(`Fehler: ${e.message}`, "error");
     } finally {

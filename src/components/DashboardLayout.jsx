@@ -60,7 +60,7 @@ export default function DashboardLayout() {
   const [selectedId, setSelectedId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const { data, loading, error, lastUpdate, reload } = useBaserowData();
+  const { data, loading, error, lastUpdate, reload, reloadAufgaben } = useBaserowData();
   /* Navigate to a specific tab and optionally highlight an item */
   const navigateTo = (tab, id = null) => {
     setActiveTab(tab);
@@ -110,7 +110,7 @@ export default function DashboardLayout() {
       case "mieten": return <MietenView data={data} navigateTo={navigateTo} />;
       case "instrumente": return <InstrumenteView data={data} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
       case "kunden": return <KundenView data={data} reload={reload} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
-      case "angebote": return <AngeboteView data={data} reload={reload} />;
+      case "angebote": return <AngeboteView data={data} reload={reload} reloadAufgaben={reloadAufgaben} />;
       case "rechnungen": return <RechnungenView data={data} />;
       case "einkauf": return <EinkaufView data={data} reload={reload} />;
       case "finanzen": return <FinanzenView data={data} />;
