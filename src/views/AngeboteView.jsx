@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { Check, X, Send, FileText } from "lucide-react";
+import { Check, X, Send, FileText, Truck } from "lucide-react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
@@ -29,6 +29,7 @@ function AngebotCard({
   onAcceptInquiry, onRejectInquiry,
   onMarkSent,
   onCustomerAccepted, onCustomerRejected,
+  onRechnungErstellen,
   loadingId,
 }) {
   const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
@@ -128,6 +129,24 @@ function AngebotCard({
           </div>
         )}
 
+        {/* Phase 5: Kunde angenommen → Rechnung erstellen */}
+        {status === "Kunde angenommen" && onRechnungErstellen && (
+          <div className="ml-auto">
+            <button
+              onClick={() => onRechnungErstellen(angebot)}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 bg-orange-500/15 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-orange-500/25 transition-all disabled:opacity-50"
+            >
+              {isLoading ? (
+                <span className="w-3 h-3 border-2 border-orange-400/30 border-t-orange-400 rounded-full animate-spin" />
+              ) : (
+                <Truck className="w-3.5 h-3.5" />
+              )}
+              Abgeholt / Geliefert
+            </button>
+          </div>
+        )}
+
         {/* Phase 4: versendet → Kunde angenommen / Kunde abgelehnt */}
         {status === "versendet" && (
           <div className="flex gap-2 ml-auto">
@@ -167,6 +186,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
   const [markSentAngebot, setMarkSentAngebot] = useState(null);
   const [customerAcceptedAngebot, setCustomerAcceptedAngebot] = useState(null);
   const [customerRejectedAngebot, setCustomerRejectedAngebot] = useState(null);
+  const [rechnungAngebot, setRechnungAngebot] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -278,6 +298,31 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
     }
   };
 
+  /* ── Phase 5: Rechnung erstellen → Webhook + PATCH Status "Abgeholt" ── */
+  const handleRechnungErstellen = async () => {
+    if (!rechnungAngebot) return;
+    const angebotId = rechnungAngebot.Angebot_ID;
+    const rowId = rechnungAngebot.id;
+    const mietId = rechnungAngebot.Mieten?.[0]?.id;
+    if (!mietId) {
+      showToast("Fehler: Keine Miet-ID gefunden", "error");
+      setRechnungAngebot(null);
+      return;
+    }
+    setRechnungAngebot(null);
+    setLoadingId(angebotId);
+    try {
+      await triggerWebhook("rechnung_erstellen", { miet_id: mietId });
+      await updateRow(TABLE_IDS.angebote, rowId, { Status: 3918 });
+      showToast(`Rechnung für Angebot #${angebotId} wird erstellt.`);
+      reload();
+    } catch (e) {
+      showToast(`Fehler beim Erstellen der Rechnung: ${e.message}`, "error");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   /* ── Filter & Sort ── */
   const filterSortConfig = useMemo(() => ({
     filters: [
@@ -301,7 +346,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
   );
   const kundeAngenommen = fs.items.filter((a) => a.Status?.value === "Kunde angenommen");
   const abgeschlossen = fs.items.filter((a) =>
-    ["abgelehnt", "abgelaufen", "Kunde abgelehnt"].includes(a.Status?.value)
+    ["abgelehnt", "abgelaufen", "Kunde abgelehnt", "Abgeholt"].includes(a.Status?.value)
   );
 
   return (
@@ -361,6 +406,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
               onMarkSent={() => {}}
               onCustomerAccepted={() => {}}
               onCustomerRejected={() => {}}
+              onRechnungErstellen={setRechnungAngebot}
               loadingId={loadingId}
             />
           ))}
@@ -570,6 +616,42 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
             </p>
             <p className="text-gray-500">
               Das Angebot wird als &quot;Kunde abgelehnt&quot; markiert.
+            </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Modal: Rechnung erstellen (Phase 5) ── */}
+      <Modal
+        open={!!rechnungAngebot}
+        onClose={() => setRechnungAngebot(null)}
+        title="Rechnung erstellen?"
+        footer={
+          <>
+            <button
+              onClick={() => setRechnungAngebot(null)}
+              className="text-gray-400 text-sm px-4 py-2 rounded-lg hover:text-gray-200 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleRechnungErstellen}
+              className="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-orange-500/25 transition-all inline-flex items-center gap-1.5"
+            >
+              <Truck className="w-3.5 h-3.5" />Rechnung erstellen & abschließen
+            </button>
+          </>
+        }
+      >
+        {rechnungAngebot && (
+          <div className="text-sm text-gray-300 space-y-2">
+            <p>
+              Instrument wurde abgeholt/geliefert für{" "}
+              <span className="font-semibold">{getKundeName(rechnungAngebot)}</span>?
+            </p>
+            <p className="text-gray-500">Angebot #{rechnungAngebot.Angebot_ID} · {rechnungAngebot.Produkte}</p>
+            <p className="text-gray-500 text-xs">
+              Der n8n-Workflow erstellt die Rechnung. Das Angebot wird als &quot;Abgeholt&quot; markiert und aus dieser Ansicht entfernt.
             </p>
           </div>
         )}

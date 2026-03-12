@@ -16,7 +16,7 @@ function priorityBadge(prio) {
   }
 }
 
-function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
+function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab }) {
   const isLoading = savingId === task.id;
   const isAuto = task.quelle === "Automatisch";
 
@@ -25,6 +25,11 @@ function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium">{task.titel}</div>
+          {angebotInfo && (
+            <div className="text-xs text-gray-500 mt-0.5">
+              Angebotsnr. {angebotInfo.nummer} · {angebotInfo.kundeName}
+            </div>
+          )}
           {task.Beschreibung && (
             <div className="text-xs text-gray-500 mt-1 line-clamp-2">{task.Beschreibung}</div>
           )}
@@ -70,7 +75,7 @@ function TaskCard({ task, onStatusChange, savingId, setActiveTab }) {
   );
 }
 
-function PriorityGroup({ label, color, tasks, onStatusChange, savingId, setActiveTab }) {
+function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, savingId, setActiveTab }) {
   const dotColor = color === "red" ? "bg-red-400" : color === "yellow" ? "bg-yellow-400" : "bg-blue-400";
   return (
     <div className="mb-5">
@@ -84,6 +89,7 @@ function PriorityGroup({ label, color, tasks, onStatusChange, savingId, setActiv
         <TaskCard
           key={t.id}
           task={t}
+          angebotInfo={t.angebotId ? angebotMap[t.angebotId] : null}
           onStatusChange={onStatusChange}
           savingId={savingId}
           setActiveTab={setActiveTab}
@@ -94,6 +100,17 @@ function PriorityGroup({ label, color, tasks, onStatusChange, savingId, setActiv
 }
 
 export default function AufgabenView({ data, reload, setActiveTab }) {
+  /* Angebot-Lookup: angebotId → { nummer, kundeName } */
+  const angebotMap = useMemo(() => {
+    const map = {};
+    for (const a of (data.angebote || [])) {
+      const kundeId = a.Kunden_ID?.[0]?.id;
+      const kunde = kundeId ? data.kundenMap?.[kundeId] : null;
+      const kundeName = kunde ? [kunde.Vorname, kunde.Nachname].filter(Boolean).join(" ") : null;
+      map[a.id] = { nummer: a.Angebotsnummer || a.Angebot_ID || a.id, kundeName };
+    }
+    return map;
+  }, [data.angebote, data.kundenMap]);
   const [showErledigt, setShowErledigt] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitel, setNewTitel] = useState("");
@@ -273,6 +290,7 @@ export default function AufgabenView({ data, reload, setActiveTab }) {
           <TaskCard
             key={t.id}
             task={t}
+            angebotInfo={t.angebotId ? angebotMap[t.angebotId] : null}
             onStatusChange={handleStatusChange}
             savingId={savingId}
             setActiveTab={setActiveTab}
@@ -282,15 +300,15 @@ export default function AufgabenView({ data, reload, setActiveTab }) {
         <>
           {grouped.hoch.length > 0 && (
             <PriorityGroup label="Hoch" color="red" tasks={grouped.hoch}
-              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
           )}
           {grouped.mittel.length > 0 && (
             <PriorityGroup label="Mittel" color="yellow" tasks={grouped.mittel}
-              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
           )}
           {grouped.niedrig.length > 0 && (
             <PriorityGroup label="Niedrig" color="blue" tasks={grouped.niedrig}
-              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
           )}
         </>
       )}

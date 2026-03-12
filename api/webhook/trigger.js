@@ -6,6 +6,7 @@ const WEBHOOK_MAP = {
   absage_senden: () => process.env.N8N_WEBHOOK_ABSAGE_SENDEN,
   angebot_angenommen: () => process.env.N8N_WEBHOOK_ANGEBOT_ANGENOMMEN,
   beleg_analyse: () => process.env.N8N_WEBHOOK_BELEG_ANALYSE,
+  rechnung_erstellen: () => process.env.N8N_WEBHOOK_RECHNUNG_ERSTELLEN,
 };
 
 export default async function handler(req, res) {
