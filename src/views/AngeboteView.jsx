@@ -317,7 +317,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     if (!rechnungAngebot) return;
     const angebotId = rechnungAngebot.Angebot_ID;
     const rowId = rechnungAngebot.id;
-    const mietId = parseInt(rechnungAngebot.Mieten?.[0]?.value);
+    const mietId = rechnungAngebot.Mieten?.[0]?.id;
     if (!mietId) {
       showToast("Fehler: Keine Miet-ID gefunden", "error");
       setRechnungAngebot(null);
