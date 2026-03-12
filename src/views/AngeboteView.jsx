@@ -8,7 +8,7 @@ import Toast from "../components/Toast";
 import FilterBar from "../components/FilterBar";
 import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro } from "../utils/format";
-import { triggerWebhook, updateRow, TABLE_IDS } from "../api/baserow";
+import { triggerWebhook, updateRow, createRow, TABLE_IDS } from "../api/baserow";
 
 function statusBadge(val) {
   switch (val) {
@@ -312,20 +312,32 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     }
   };
 
-  /* ── Phase 5: Rechnung erstellen → Webhook + PATCH Status "Abgeholt" ── */
+  /* ── Phase 5: Rechnung erstellen → (Miete anlegen wenn nötig) + Webhook + PATCH Status "Abgeholt" ── */
   const handleRechnungErstellen = async () => {
     if (!rechnungAngebot) return;
     const angebotId = rechnungAngebot.Angebot_ID;
     const rowId = rechnungAngebot.id;
-    const mietId = rechnungAngebot.Mieten?.[0]?.id;
-    if (!mietId) {
-      showToast("Fehler: Keine Miet-ID gefunden", "error");
-      setRechnungAngebot(null);
-      return;
-    }
     setRechnungAngebot(null);
     setLoadingId(angebotId);
     try {
+      let mietId = rechnungAngebot.Mieten?.[0]?.id;
+
+      // Keine Miete vorhanden → jetzt erstellen
+      if (!mietId) {
+        const today = new Date().toISOString().slice(0, 10);
+        const kundeId = rechnungAngebot.Kunden_ID?.[0]?.id;
+        const newMiete = await createRow(TABLE_IDS.mieten, {
+          Kunde_ID: kundeId ? [kundeId] : [],
+          Mietbeginn: today,
+          Laufzeit_Monate: rechnungAngebot.Laufzeit_Monate || 6,
+          Status: "Aktiv",
+          Preis_monat_EUR: parseFloat(rechnungAngebot.Preis_monat_EUR) || 0,
+          Kaution_EUR: parseFloat(rechnungAngebot.Kaution) || 0,
+          Angebot_ID: [rowId],
+        });
+        mietId = newMiete.id;
+      }
+
       await triggerWebhook("rechnung_erstellen", { miet_id: mietId });
       await updateRow(TABLE_IDS.angebote, rowId, { Status: 3918 });
       showToast(`Rechnung für Angebot #${angebotId} wird erstellt.`);
