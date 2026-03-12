@@ -55,8 +55,11 @@ function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab })
         {task.quelle === "Automatisch" && (
           <span className="text-gray-600">Quelle: Automatisch erkannt</span>
         )}
-        {task.angebotId && setActiveTab && (
-          <button onClick={() => setActiveTab("angebote")} className="text-blue-400 hover:underline">
+        {task.angebotId && (navigateTo || setActiveTab) && (
+          <button
+            onClick={() => navigateTo ? navigateTo("angebote", task.angebotId) : setActiveTab("angebote")}
+            className="text-blue-400 hover:underline"
+          >
             → Angebot
           </button>
         )}
@@ -99,7 +102,7 @@ function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, saving
   );
 }
 
-export default function AufgabenView({ data, reload, setActiveTab }) {
+export default function AufgabenView({ data, reload, setActiveTab, navigateTo }) {
   /* Angebot-Lookup: angebotId → { nummer, kundeName } */
   const angebotMap = useMemo(() => {
     const map = {};

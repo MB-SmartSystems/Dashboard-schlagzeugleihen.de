@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Check, X, Send, FileText, Truck } from "lucide-react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
@@ -31,7 +31,14 @@ function AngebotCard({
   onCustomerAccepted, onCustomerRejected,
   onRechnungErstellen,
   loadingId,
+  isHighlighted,
 }) {
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
   const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
   const status = angebot.Status?.value;
   const isLoading = loadingId === angebot.Angebot_ID;
@@ -41,7 +48,7 @@ function AngebotCard({
     new Date(angebot.Gueltig_bis) < new Date(new Date().toDateString());
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50">
+    <div ref={cardRef} className={`bg-gray-900 border rounded-xl p-5 mb-3 transition-all hover:bg-gray-900/80 hover:border-accent/50 ${isHighlighted ? "border-accent ring-1 ring-accent/30" : "border-gray-800"}`}>
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="text-[1.05rem] font-semibold">{kundeName}</div>
@@ -176,8 +183,15 @@ function AngebotCard({
   );
 }
 
-export default function AngeboteView({ data, reload, reloadAufgaben }) {
+export default function AngeboteView({ data, reload, reloadAufgaben, selectedId, onSelectedClear }) {
   const { angebote, kundenMap } = data;
+
+  useEffect(() => {
+    if (selectedId && onSelectedClear) {
+      const timer = setTimeout(() => onSelectedClear(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedId, onSelectedClear]);
 
   /* ── Modal states ── */
   const [acceptInquiryAngebot, setAcceptInquiryAngebot] = useState(null);
@@ -303,7 +317,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
     if (!rechnungAngebot) return;
     const angebotId = rechnungAngebot.Angebot_ID;
     const rowId = rechnungAngebot.id;
-    const mietId = rechnungAngebot.Mieten?.[0]?.id;
+    const mietId = parseInt(rechnungAngebot.Mieten?.[0]?.value);
     if (!mietId) {
       showToast("Fehler: Keine Miet-ID gefunden", "error");
       setRechnungAngebot(null);
@@ -386,6 +400,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
             onCustomerAccepted={setCustomerAcceptedAngebot}
             onCustomerRejected={setCustomerRejectedAngebot}
             loadingId={loadingId}
+            isHighlighted={selectedId === a.id}
           />
         ))
       )}
@@ -408,6 +423,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
               onCustomerRejected={() => {}}
               onRechnungErstellen={setRechnungAngebot}
               loadingId={loadingId}
+              isHighlighted={selectedId === a.id}
             />
           ))}
         </>
@@ -431,6 +447,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben }) {
                 onCustomerAccepted={() => {}}
                 onCustomerRejected={() => {}}
                 loadingId={loadingId}
+                isHighlighted={selectedId === a.id}
               />
             ))}
           </div>

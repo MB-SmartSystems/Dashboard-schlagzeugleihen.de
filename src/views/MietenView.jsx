@@ -99,7 +99,7 @@ export default function MietenView({ data, navigateTo }) {
 
   const fs = useFilterSort(mieten, filterSortConfig);
 
-  const pipeline = fs.items.filter((m) => ["Bestellt", "Bereit", "Anfrage"].includes(m.Status?.value));
+  const pipeline = fs.items.filter((m) => ["Bereit"].includes(m.Status?.value));
   const aktiv = fs.items
     .filter((m) => ["Aktiv", "Verlängert", "unbefristet"].includes(m.Status?.value))
     .sort((a, b) => (a.Mietende_berechnet || "9999").localeCompare(b.Mietende_berechnet || "9999"));
