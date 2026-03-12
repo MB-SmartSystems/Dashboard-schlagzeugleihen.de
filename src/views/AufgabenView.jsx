@@ -16,7 +16,7 @@ function priorityBadge(prio) {
   }
 }
 
-function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab }) {
+function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab, navigateTo }) {
   const isLoading = savingId === task.id;
   const isAuto = task.quelle === "Automatisch";
 
@@ -78,7 +78,7 @@ function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab })
   );
 }
 
-function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, savingId, setActiveTab }) {
+function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, savingId, setActiveTab, navigateTo }) {
   const dotColor = color === "red" ? "bg-red-400" : color === "yellow" ? "bg-yellow-400" : "bg-blue-400";
   return (
     <div className="mb-5">
@@ -96,6 +96,7 @@ function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, saving
           onStatusChange={onStatusChange}
           savingId={savingId}
           setActiveTab={setActiveTab}
+          navigateTo={navigateTo}
         />
       ))}
     </div>
@@ -297,21 +298,22 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
             onStatusChange={handleStatusChange}
             savingId={savingId}
             setActiveTab={setActiveTab}
+            navigateTo={navigateTo}
           />
         ))
       ) : (
         <>
           {grouped.hoch.length > 0 && (
             <PriorityGroup label="Hoch" color="red" tasks={grouped.hoch}
-              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
           {grouped.mittel.length > 0 && (
             <PriorityGroup label="Mittel" color="yellow" tasks={grouped.mittel}
-              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
           {grouped.niedrig.length > 0 && (
             <PriorityGroup label="Niedrig" color="blue" tasks={grouped.niedrig}
-              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} />
+              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
         </>
       )}
