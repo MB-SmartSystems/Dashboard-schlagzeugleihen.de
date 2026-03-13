@@ -10,6 +10,22 @@ import { useFilterSort } from "../hooks/useFilterSort";
 import { formatDate, formatEuro } from "../utils/format";
 import { triggerWebhook, updateRow, createRow, TABLE_IDS } from "../api/baserow";
 
+function getBestellliste(angebot, preismodelle) {
+  const produktName = (angebot.Produkte || "").split(/[,\n]/)[0].trim();
+  const normStr = (s) => s.toLowerCase().replace(/[\s\-–—+&,.]/g, "");
+  const normProd = normStr(produktName).slice(0, 14);
+  const matchedPM = preismodelle.find(
+    (pm) =>
+      pm.Aktiv?.value === "Ja" &&
+      pm.Kategorie?.value === "Hauptprodukt" &&
+      normStr(pm.Modellname || "").includes(normProd)
+  );
+  const zubehörListe = matchedPM
+    ? (matchedPM.Zubehör || "").split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  return { produktName, matchedPM, zubehörListe };
+}
+
 function statusBadge(val) {
   switch (val) {
     case "Offen": return <Badge color="accent">Offen</Badge>;
@@ -390,15 +406,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
       }
 
       // 2. Preismodell-Match
-      const produktName = (produktBestelltAngebot.Produkte || "").split(/[,\n]/)[0].trim();
-      const normStr = (s) => s.toLowerCase().replace(/[\s\-–—+&,.]/g, "");
-      const normProd = normStr(produktName).slice(0, 14);
-      const preismodell = data.preismodelle.find(
-        (pm) =>
-          pm.Aktiv?.value === "Ja" &&
-          pm.Kategorie?.value === "Hauptprodukt" &&
-          normStr(pm.Modellname || "").includes(normProd)
-      );
+      const { produktName, matchedPM: preismodell, zubehörListe: pmZubehör } = getBestellliste(produktBestelltAngebot, data.preismodelle);
       if (!preismodell) {
         showToast(`Kein Preismodell für '${produktName}' gefunden`, "error");
         setLoadingId(null);
@@ -417,12 +425,8 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
       const hauptproduktId = hauptprodukt.id;
 
       // 4. Zubehör anlegen
-      const zubehörItems = (preismodell.Zubehör || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const zubehörIds = [];
-      for (const name of zubehörItems) {
+      for (const name of pmZubehör) {
         const z = await createRow(TABLE_IDS.instrumente, {
           Modellname: name,
           Zustand: "Neu",
@@ -443,13 +447,19 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         Instrument_ID: [hauptproduktId],
       });
 
-      // Beleg-Aufgabe erstellen
+      // Beleg-Aufgabe mit Checkliste erstellen
+      const checklistLines = [
+        `[ ] ${preismodell.Modellname}|Hauptprodukt`,
+        ...pmZubehör.map((z) => `[ ] ${z}|Zubehör`),
+      ];
+      const beschreibung = `CHECKLIST:\n${checklistLines.join("\n")}`;
       await createRow(TABLE_IDS.aufgaben, {
         Titel: `Beleg für ${produktName} hochladen`,
         Status: "Offen",
         Priorität: "Mittel",
         Typ: "Manuell",
         Quelle: "Automatisch",
+        Beschreibung: beschreibung,
         Verknüpfung_Instrument: [hauptproduktId],
       });
 
@@ -851,17 +861,62 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
           </>
         }
       >
-        {produktBestelltAngebot && (
-          <div className="text-sm text-gray-300 space-y-2">
-            <p>
-              Produkt für <span className="font-semibold">{getKundeName(produktBestelltAngebot)}</span> bestellen?
-            </p>
-            <p className="text-gray-500">{produktBestelltAngebot.Produkte}</p>
-            <p className="text-gray-500 text-xs">
-              Hauptprodukt + Zubehör werden angelegt (Lagernd). Sobald das Instrument eintrifft → &quot;Abgeholt/Geliefert&quot;.
-            </p>
-          </div>
-        )}
+        {produktBestelltAngebot && (() => {
+          const { produktName, matchedPM, zubehörListe } = getBestellliste(produktBestelltAngebot, data.preismodelle);
+          const totalCount = 1 + zubehörListe.length;
+          return (
+            <div className="text-sm text-gray-300 space-y-3">
+              <p>Produkt für <span className="font-semibold">{getKundeName(produktBestelltAngebot)}</span> bestellen?</p>
+
+              <div className="bg-gray-800/60 border border-yellow-500/20 rounded-lg p-3 space-y-2">
+                <div className="text-xs text-yellow-400 font-semibold uppercase tracking-wide">
+                  Jetzt bestellen beim Händler:
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <span className="text-yellow-400 mt-0.5">▸</span>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide mr-1">Hauptprodukt</span>
+                    <span className="font-medium text-white">{matchedPM ? matchedPM.Modellname : produktName}</span>
+                  </div>
+                </div>
+
+                {zubehörListe.length > 0 && (
+                  <div className="pl-4 space-y-1">
+                    {zubehörListe.map((z, i) => (
+                      <div key={i} className="flex items-center gap-2 text-gray-300">
+                        <span className="text-gray-600 text-xs">•</span>
+                        <span>{z}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!matchedPM && (
+                  <div className="text-xs text-red-400">Kein Preismodell gefunden — Zubehörliste nicht verfügbar.</div>
+                )}
+
+                <div className="flex items-center justify-between pt-1 border-t border-gray-700/60">
+                  <span className="text-xs text-gray-400">
+                    {totalCount} Artikel — alles in <span className="text-yellow-400 font-semibold">EINER</span> Bestellung
+                  </span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(
+                      [matchedPM ? matchedPM.Modellname : produktName, ...zubehörListe].join("\n")
+                    )}
+                    className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 rounded px-2 py-0.5 transition-colors"
+                  >
+                    Kopieren
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-gray-500 text-xs">
+                Nach Bestellung beim Händler bestätigen → Instrument wird angelegt.
+              </p>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* ── Modal: Abgeholt/Geliefert (Phase 5B) ── */}

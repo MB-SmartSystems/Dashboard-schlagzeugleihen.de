@@ -7,6 +7,20 @@ import FilterBar from "../components/FilterBar";
 import { useFilterSort } from "../hooks/useFilterSort";
 import { updateRow, createRow, TABLE_IDS } from "../api/baserow";
 
+function parseChecklist(beschreibung) {
+  if (!beschreibung?.startsWith("CHECKLIST:")) return null;
+  return beschreibung
+    .split("\n")
+    .slice(1)
+    .filter(Boolean)
+    .map((line) => {
+      const done = line.startsWith("[x]");
+      const rest = line.replace(/^\[.\] /, "");
+      const [name, typ] = rest.split("|");
+      return { name: name?.trim(), typ: typ?.trim(), done };
+    });
+}
+
 function priorityBadge(prio) {
   switch (prio) {
     case "Hoch": return <Badge color="red">Hoch</Badge>;
@@ -16,11 +30,12 @@ function priorityBadge(prio) {
   }
 }
 
-function TaskCard({ task, angebotInfo, instrumentInfo, kundeName, onStatusChange, savingId, setActiveTab, navigateTo }) {
+function TaskCard({ task, angebotInfo, instrumentInfo, kundeName, onStatusChange, onChecklistToggle, savingId, setActiveTab, navigateTo }) {
   const isLoading = savingId === task.id;
   const isAuto = task.quelle === "Automatisch";
   const displayKunde = angebotInfo?.kundeName || kundeName;
   const zubehoer = instrumentInfo?.["Zugehörige_Teile"];
+  const checklist = parseChecklist(task.beschreibung);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2 transition-all hover:bg-gray-900/80 hover:border-accent/50">
@@ -40,9 +55,28 @@ function TaskCard({ task, angebotInfo, instrumentInfo, kundeName, onStatusChange
               )}
             </div>
           )}
-          {task.Beschreibung && (
-            <div className="text-xs text-gray-500 mt-1 line-clamp-2">{task.Beschreibung}</div>
-          )}
+          {checklist ? (
+            <div className="space-y-1 mt-2">
+              {checklist.map((item, i) => (
+                <label key={i} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.done}
+                    onChange={() => onChecklistToggle(task, i, checklist)}
+                    className="accent-yellow-400 w-4 h-4 flex-shrink-0"
+                  />
+                  <span className={`text-sm ${item.done ? "line-through text-gray-500" : "text-gray-300"}`}>
+                    {item.name}
+                    {item.typ === "Hauptprodukt" && (
+                      <span className="ml-1 text-xs text-gray-600">(Hauptprodukt)</span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : task.beschreibung ? (
+            <div className="text-xs text-gray-500 mt-1 line-clamp-2">{task.beschreibung}</div>
+          ) : null}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Badge color={isAuto ? "purple" : "gray"}>{isAuto ? "AUTO" : "MANUELL"}</Badge>
@@ -88,7 +122,7 @@ function TaskCard({ task, angebotInfo, instrumentInfo, kundeName, onStatusChange
   );
 }
 
-function PriorityGroup({ label, color, tasks, angebotMap, kundeMap, instrumenteMap, onStatusChange, savingId, setActiveTab, navigateTo }) {
+function PriorityGroup({ label, color, tasks, angebotMap, kundeMap, instrumenteMap, onStatusChange, onChecklistToggle, savingId, setActiveTab, navigateTo }) {
   const dotColor = color === "red" ? "bg-red-400" : color === "yellow" ? "bg-yellow-400" : "bg-blue-400";
   return (
     <div className="mb-5">
@@ -106,6 +140,7 @@ function PriorityGroup({ label, color, tasks, angebotMap, kundeMap, instrumenteM
           instrumentInfo={t.instrumentId ? instrumenteMap?.[t.instrumentId] : null}
           kundeName={t.kundeId ? kundeMap?.[t.kundeId] : null}
           onStatusChange={onStatusChange}
+          onChecklistToggle={onChecklistToggle}
           savingId={savingId}
           setActiveTab={setActiveTab}
           navigateTo={navigateTo}
@@ -158,6 +193,7 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
       prioritaet: t.Priorität?.value || t.Prioritaet?.value || "Mittel",
       status: t.Status?.value || "Offen",
       quelle: t.Quelle?.value || "Manuell",
+      beschreibung: t.Beschreibung || "",
       angebotId: t.Verknüpfung_Angebot?.[0]?.id || t.Verknuepfung_Angebot?.[0]?.id || null,
       kundeId: t.Verknüpfung_Kunde?.[0]?.id || t.Verknuepfung_Kunde?.[0]?.id || null,
       instrumentId: t.Verknüpfung_Instrument?.[0]?.id || t.Verknuepfung_Instrument?.[0]?.id || null,
@@ -220,6 +256,31 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
     if (!t.Erledigt_am) return false;
     return t.Erledigt_am.startsWith(new Date().toISOString().slice(0, 10));
   }).length;
+
+  /* Checkliste Toggle */
+  const handleChecklistToggle = async (task, toggleIndex, checklist) => {
+    const updated = checklist.map((item, i) =>
+      i === toggleIndex ? { ...item, done: !item.done } : item
+    );
+    const newBeschreibung =
+      "CHECKLIST:\n" +
+      updated.map((item) => `[${item.done ? "x" : " "}] ${item.name}|${item.typ}`).join("\n");
+
+    const allDone = updated.every((item) => item.done);
+    const patch = { Beschreibung: newBeschreibung };
+    if (allDone) patch.Status = "Erledigt";
+
+    setSavingId(task.id);
+    try {
+      await updateRow(TABLE_IDS.aufgaben, task.id, patch);
+      if (allDone) setToast({ message: "Alle Artikel abgehakt → Erledigt ✓", type: "success" });
+      reload();
+    } catch (e) {
+      setToast({ message: `Fehler: ${e.message}`, type: "error" });
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   /* Status ändern */
   const handleStatusChange = async (task, newStatus) => {
@@ -323,6 +384,7 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
             instrumentInfo={t.instrumentId ? data.instrumenteMap?.[t.instrumentId] : null}
             kundeName={t.kundeId ? kundeMap[t.kundeId] : null}
             onStatusChange={handleStatusChange}
+            onChecklistToggle={handleChecklistToggle}
             savingId={savingId}
             setActiveTab={setActiveTab}
             navigateTo={navigateTo}
@@ -333,17 +395,17 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
           {grouped.hoch.length > 0 && (
             <PriorityGroup label="Hoch" color="red" tasks={grouped.hoch}
               angebotMap={angebotMap} kundeMap={kundeMap} instrumenteMap={data.instrumenteMap}
-              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
+              onStatusChange={handleStatusChange} onChecklistToggle={handleChecklistToggle} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
           {grouped.mittel.length > 0 && (
             <PriorityGroup label="Mittel" color="yellow" tasks={grouped.mittel}
               angebotMap={angebotMap} kundeMap={kundeMap} instrumenteMap={data.instrumenteMap}
-              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
+              onStatusChange={handleStatusChange} onChecklistToggle={handleChecklistToggle} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
           {grouped.niedrig.length > 0 && (
             <PriorityGroup label="Niedrig" color="blue" tasks={grouped.niedrig}
               angebotMap={angebotMap} kundeMap={kundeMap} instrumenteMap={data.instrumenteMap}
-              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
+              onStatusChange={handleStatusChange} onChecklistToggle={handleChecklistToggle} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
         </>
       )}
