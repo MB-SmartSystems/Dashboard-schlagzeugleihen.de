@@ -316,7 +316,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
       const gueltigBis = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
         .toISOString().split("T")[0];
       await updateRow(TABLE_IDS.angebote, rowId, {
-        Status: 3754,              // "versendet"
+        Status: "Versendet",
         Gueltig_bis: gueltigBis,   // heute + 14 Tage
       });
       showToast(`Angebot #${angebotId} als versendet markiert.`);
@@ -355,7 +355,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     setLoadingId(angebotId);
     try {
       await updateRow(TABLE_IDS.angebote, rowId, {
-        Status: 3863,  // "Kunde abgelehnt"
+        Status: "Kunde Abgelehnt",
       });
       showToast(`Angebot #${angebotId} – Kunde hat abgelehnt.`);
       reload();
@@ -496,7 +496,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
       }
 
       await triggerWebhook("rechnung_erstellen", { miet_id: mietId });
-      await updateRow(TABLE_IDS.angebote, rowId, { Status: 3918 });
+      await updateRow(TABLE_IDS.angebote, rowId, { Status: "Abgeholt" });
       showToast(`Rechnung für Angebot #${angebotId} wird erstellt.`);
       reload();
     } catch (e) {
