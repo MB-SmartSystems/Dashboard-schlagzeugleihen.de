@@ -164,29 +164,58 @@ function computeExpectedTasks(data) {
     }
   });
 
-  /* ── Trigger 4: Offenes Angebot noch nicht versendet ── */
+  /* ── Trigger 4: Offenes Angebot ── */
   angebote.forEach((a) => {
     if (a.Status?.value !== "Offen") return;
     const kundeId = a.Kunden_ID?.[0]?.id || null;
     const kundeLink = kundeId ? { Verknüpfung_Kunde: [kundeId] } : {};
-    expected.push({
-      deriveKey: `versenden-${a.id}`,
-      matchExisting: (t) =>
-        t.Typ?.id === OPT.TYP_MANUELL &&
-        linkIds(t["Verknüpfung_Angebot"] || t.Verknuepfung_Angebot).includes(a.id) &&
-        (t.Titel || "").includes("Angebot versenden") &&
-        t.Quelle?.id === OPT.QUELLE_AUTO &&
-        t.Status?.id !== OPT.STATUS_ERLEDIGT,
-      payload: {
-        Titel: `Angebot versenden: ${a.Angebotsnummer || a.id}`,
-        Typ: OPT.TYP_MANUELL,
-        Priorität: OPT.PRIO_HOCH,
-        Status: OPT.STATUS_OFFEN,
-        Quelle: OPT.QUELLE_AUTO,
-        Verknüpfung_Angebot: [a.id],
-        ...kundeLink,
-      },
-    });
+    const kunde = data.kundenMap?.[kundeId];
+    const kundeName = kunde
+      ? [kunde.Vorname, kunde.Nachname].filter(Boolean).join(" ") || "Unbekannt"
+      : "Unbekannt";
+    const produktText = (a.Produkte || "").trim();
+
+    if (!a.Angebotsnummer) {
+      // Trigger 4a: Anfrage ohne Angebotsnummer → Entscheidungsaufgabe
+      expected.push({
+        deriveKey: `anfrage-${a.id}`,
+        matchExisting: (t) =>
+          t.Typ?.id === OPT.TYP_MANUELL &&
+          linkIds(t["Verknüpfung_Angebot"] || t.Verknuepfung_Angebot).includes(a.id) &&
+          (t.Titel || "").startsWith("Anfrage annehmen oder ablehnen") &&
+          t.Quelle?.id === OPT.QUELLE_AUTO &&
+          t.Status?.id !== OPT.STATUS_ERLEDIGT,
+        payload: {
+          Titel: `Anfrage annehmen oder ablehnen: ${kundeName}${produktText ? ` – ${produktText}` : ""}`,
+          Typ: OPT.TYP_MANUELL,
+          Priorität: OPT.PRIO_MITTEL,
+          Status: OPT.STATUS_OFFEN,
+          Quelle: OPT.QUELLE_AUTO,
+          Verknüpfung_Angebot: [a.id],
+          ...kundeLink,
+        },
+      });
+    } else {
+      // Trigger 4b: Angebot mit Nummer → versenden
+      expected.push({
+        deriveKey: `versenden-${a.id}`,
+        matchExisting: (t) =>
+          t.Typ?.id === OPT.TYP_MANUELL &&
+          linkIds(t["Verknüpfung_Angebot"] || t.Verknuepfung_Angebot).includes(a.id) &&
+          (t.Titel || "").startsWith("Angebot versenden") &&
+          t.Quelle?.id === OPT.QUELLE_AUTO &&
+          t.Status?.id !== OPT.STATUS_ERLEDIGT,
+        payload: {
+          Titel: `Angebot versenden: ${a.Angebotsnummer} – ${kundeName}`,
+          Typ: OPT.TYP_MANUELL,
+          Priorität: OPT.PRIO_HOCH,
+          Status: OPT.STATUS_OFFEN,
+          Quelle: OPT.QUELLE_AUTO,
+          Verknüpfung_Angebot: [a.id],
+          ...kundeLink,
+        },
+      });
+    }
   });
 
   /* ── Trigger 5: Versendetes Angebot ohne Reaktion ── */
@@ -275,7 +304,9 @@ function isDashboardManaged(a) {
   // Trigger 3a/3b: Angebot angenommen → Instrument vorbereiten / Bestellen
   if (typ === OPT.TYP_VORBEREITEN && hasAngebot && title.includes(" Angebot ")) return true;
   if (typ === OPT.TYP_BESTELLEN && hasAngebot && title.startsWith("Bestellen:")) return true;
-  // Trigger 4: Offenes Angebot versenden
+  // Trigger 4a: Anfrage entscheiden
+  if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Anfrage annehmen oder ablehnen:")) return true;
+  // Trigger 4b: Offenes Angebot versenden
   if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Angebot versenden:")) return true;
   // Trigger 5: Versendetes Angebot nachfassen
   if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Angebot nachfassen:")) return true;

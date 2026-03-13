@@ -141,24 +141,43 @@ export function computeDerivedTasks(data) {
     });
   });
 
-  /* ── Trigger 4: Offenes Angebot noch nicht versendet ── */
+  /* ── Trigger 4: Offenes Angebot ── */
   angebote.forEach((a) => {
     const status = a.Status?.value;
     if (status !== "Offen") return;
     const kunde = kundenMap[a.Kunden_ID?.[0]?.id];
     const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
-    tasks.push({
-      _derived: true,
-      _deriveKey: `versenden-${a.id}`,
-      titel: `Angebot versenden: ${a.Angebotsnummer || a.Angebot_ID} – ${kundeName}`,
-      typ: "Manuell",
-      prioritaet: "Hoch",
-      status: "Offen",
-      quelle: "Automatisch",
-      angebotId: a.id,
-      kundeId: a.Kunden_ID?.[0]?.id || null,
-      instrumentId: null,
-    });
+    const produktText = (a.Produkte || "").trim();
+
+    if (!a.Angebotsnummer) {
+      // Anfrage ohne Angebotsnummer → Entscheidungsaufgabe
+      tasks.push({
+        _derived: true,
+        _deriveKey: `anfrage-${a.id}`,
+        titel: `Anfrage annehmen oder ablehnen: ${kundeName}${produktText ? ` – ${produktText}` : ""}`,
+        typ: "Manuell",
+        prioritaet: "Mittel",
+        status: "Offen",
+        quelle: "Automatisch",
+        angebotId: a.id,
+        kundeId: a.Kunden_ID?.[0]?.id || null,
+        instrumentId: null,
+      });
+    } else {
+      // Angebot mit Nummer → versenden
+      tasks.push({
+        _derived: true,
+        _deriveKey: `versenden-${a.id}`,
+        titel: `Angebot versenden: ${a.Angebotsnummer} – ${kundeName}`,
+        typ: "Manuell",
+        prioritaet: "Hoch",
+        status: "Offen",
+        quelle: "Automatisch",
+        angebotId: a.id,
+        kundeId: a.Kunden_ID?.[0]?.id || null,
+        instrumentId: null,
+      });
+    }
   });
 
   /* ── Trigger 5: Versendetes Angebot ohne Reaktion ── */
