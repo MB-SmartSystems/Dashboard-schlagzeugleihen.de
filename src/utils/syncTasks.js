@@ -226,6 +226,35 @@ function computeExpectedTasks(data) {
     });
   });
 
+  /* ── Trigger 6: Miete reserviert → Instrument vorbereiten ── */
+  mieten.forEach((m) => {
+    if (m.Status?.value !== "Reserviert") return;
+    const kundeId = m.Kunde_ID?.[0]?.id || null;
+    const instrumentId = m.Instrument_ID?.[0]?.id || null;
+    const angebotId = m.Angebot_ID?.[0]?.id || null;
+    const kundeLink = kundeId ? { Verknüpfung_Kunde: [kundeId] } : {};
+    const instrLink = instrumentId ? { Verknüpfung_Instrument: [instrumentId] } : {};
+    const angebotLink = angebotId ? { Verknüpfung_Angebot: [angebotId] } : {};
+    expected.push({
+      deriveKey: `miete-vorbereiten-${m.id}`,
+      matchExisting: (t) =>
+        t.Typ?.id === OPT.TYP_VORBEREITEN &&
+        (t.Titel || "").includes(`Miete ${m.id}`) &&
+        t.Quelle?.id === OPT.QUELLE_AUTO &&
+        t.Status?.id !== OPT.STATUS_ERLEDIGT,
+      payload: {
+        Titel: `Instrument für Miete ${m.id} vorbereiten`,
+        Typ: OPT.TYP_VORBEREITEN,
+        Priorität: OPT.PRIO_HOCH,
+        Status: OPT.STATUS_OFFEN,
+        Quelle: OPT.QUELLE_AUTO,
+        ...kundeLink,
+        ...instrLink,
+        ...angebotLink,
+      },
+    });
+  });
+
   return expected;
 }
 
@@ -250,6 +279,8 @@ function isDashboardManaged(a) {
   if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Angebot versenden:")) return true;
   // Trigger 5: Versendetes Angebot nachfassen
   if (typ === OPT.TYP_MANUELL && hasAngebot && title.startsWith("Angebot nachfassen:")) return true;
+  // Trigger 6: Miete reserviert → Instrument vorbereiten
+  if (typ === OPT.TYP_VORBEREITEN && title.startsWith("Instrument für Miete") && title.includes("vorbereiten")) return true;
 
   return false;
 }

@@ -16,18 +16,28 @@ function priorityBadge(prio) {
   }
 }
 
-function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab, navigateTo }) {
+function TaskCard({ task, angebotInfo, instrumentInfo, kundeName, onStatusChange, savingId, setActiveTab, navigateTo }) {
   const isLoading = savingId === task.id;
   const isAuto = task.quelle === "Automatisch";
+  const displayKunde = angebotInfo?.kundeName || kundeName;
+  const zubehoer = instrumentInfo?.["Zugehörige_Teile"];
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2 transition-all hover:bg-gray-900/80 hover:border-accent/50">
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium">{task.titel}</div>
-          {angebotInfo && (
-            <div className="text-xs text-gray-500 mt-0.5">
-              Angebotsnr. {angebotInfo.nummer} · {angebotInfo.kundeName}
+          {(angebotInfo || displayKunde || instrumentInfo) && (
+            <div className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-1.5">
+              {angebotInfo?.nummer && <span>Ang. {angebotInfo.nummer}</span>}
+              {displayKunde && <span>· {displayKunde}</span>}
+              {instrumentInfo && <span>· {instrumentInfo.Modellname || "–"}</span>}
+              {zubehoer?.length > 0 && (
+                <span>· Zubehör: {zubehoer.map((z) => z.value).join(", ")}</span>
+              )}
+              {angebotInfo?.produkte && !instrumentInfo && (
+                <span>· {angebotInfo.produkte}</span>
+              )}
             </div>
           )}
           {task.Beschreibung && (
@@ -78,7 +88,7 @@ function TaskCard({ task, angebotInfo, onStatusChange, savingId, setActiveTab, n
   );
 }
 
-function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, savingId, setActiveTab, navigateTo }) {
+function PriorityGroup({ label, color, tasks, angebotMap, kundeMap, instrumenteMap, onStatusChange, savingId, setActiveTab, navigateTo }) {
   const dotColor = color === "red" ? "bg-red-400" : color === "yellow" ? "bg-yellow-400" : "bg-blue-400";
   return (
     <div className="mb-5">
@@ -93,6 +103,8 @@ function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, saving
           key={t.id}
           task={t}
           angebotInfo={t.angebotId ? angebotMap[t.angebotId] : null}
+          instrumentInfo={t.instrumentId ? instrumenteMap?.[t.instrumentId] : null}
+          kundeName={t.kundeId ? kundeMap?.[t.kundeId] : null}
           onStatusChange={onStatusChange}
           savingId={savingId}
           setActiveTab={setActiveTab}
@@ -104,17 +116,30 @@ function PriorityGroup({ label, color, tasks, angebotMap, onStatusChange, saving
 }
 
 export default function AufgabenView({ data, reload, setActiveTab, navigateTo }) {
-  /* Angebot-Lookup: angebotId → { nummer, kundeName } */
+  /* Angebot-Lookup: angebotId → { nummer, kundeName, produkte } */
   const angebotMap = useMemo(() => {
     const map = {};
     for (const a of (data.angebote || [])) {
       const kundeId = a.Kunden_ID?.[0]?.id;
       const kunde = kundeId ? data.kundenMap?.[kundeId] : null;
       const kundeName = kunde ? [kunde.Vorname, kunde.Nachname].filter(Boolean).join(" ") : null;
-      map[a.id] = { nummer: a.Angebotsnummer || a.Angebot_ID || a.id, kundeName };
+      map[a.id] = {
+        nummer: a.Angebotsnummer || a.Angebot_ID || a.id,
+        kundeName,
+        produkte: (a.Produkte || "").trim() || null,
+      };
     }
     return map;
   }, [data.angebote, data.kundenMap]);
+
+  /* Kunden-Lookup: kundeId → vollständiger Name (Fallback wenn kein angebotId) */
+  const kundeMap = useMemo(() => {
+    const map = {};
+    for (const [id, k] of Object.entries(data.kundenMap || {})) {
+      map[id] = [k.Vorname, k.Nachname].filter(Boolean).join(" ") || null;
+    }
+    return map;
+  }, [data.kundenMap]);
   const [showErledigt, setShowErledigt] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitel, setNewTitel] = useState("");
@@ -295,6 +320,8 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
             key={t.id}
             task={t}
             angebotInfo={t.angebotId ? angebotMap[t.angebotId] : null}
+            instrumentInfo={t.instrumentId ? data.instrumenteMap?.[t.instrumentId] : null}
+            kundeName={t.kundeId ? kundeMap[t.kundeId] : null}
             onStatusChange={handleStatusChange}
             savingId={savingId}
             setActiveTab={setActiveTab}
@@ -305,15 +332,18 @@ export default function AufgabenView({ data, reload, setActiveTab, navigateTo })
         <>
           {grouped.hoch.length > 0 && (
             <PriorityGroup label="Hoch" color="red" tasks={grouped.hoch}
-              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
+              angebotMap={angebotMap} kundeMap={kundeMap} instrumenteMap={data.instrumenteMap}
+              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
           {grouped.mittel.length > 0 && (
             <PriorityGroup label="Mittel" color="yellow" tasks={grouped.mittel}
-              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
+              angebotMap={angebotMap} kundeMap={kundeMap} instrumenteMap={data.instrumenteMap}
+              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
           {grouped.niedrig.length > 0 && (
             <PriorityGroup label="Niedrig" color="blue" tasks={grouped.niedrig}
-              angebotMap={angebotMap} onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
+              angebotMap={angebotMap} kundeMap={kundeMap} instrumenteMap={data.instrumenteMap}
+              onStatusChange={handleStatusChange} savingId={savingId} setActiveTab={setActiveTab} navigateTo={navigateTo} />
           )}
         </>
       )}

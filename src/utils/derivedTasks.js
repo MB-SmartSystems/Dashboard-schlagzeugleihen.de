@@ -124,6 +124,23 @@ export function computeDerivedTasks(data) {
     }
   });
 
+  /* ── Trigger 6: Miete reserviert → Instrument vorbereiten ── */
+  mieten.forEach((m) => {
+    if (m.Status?.value !== "Reserviert") return;
+    tasks.push({
+      _derived: true,
+      _deriveKey: `miete-vorbereiten-${m.id}`,
+      titel: `Instrument für Miete ${m.id} vorbereiten`,
+      typ: "Instrument vorbereiten",
+      prioritaet: "Hoch",
+      status: "Offen",
+      quelle: "Automatisch",
+      angebotId: m.Angebot_ID?.[0]?.id || null,
+      kundeId: m.Kunde_ID?.[0]?.id || null,
+      instrumentId: m.Instrument_ID?.[0]?.id || null,
+    });
+  });
+
   /* ── Trigger 4: Offenes Angebot noch nicht versendet ── */
   angebote.forEach((a) => {
     const status = a.Status?.value;
