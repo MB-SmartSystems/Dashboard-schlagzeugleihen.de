@@ -35,8 +35,10 @@ export default async function handler(req, res) {
   });
 
   if (!apiRes.ok) {
-    console.error("Baserow row error:", apiRes.status, req.method);
-    return res.status(502).json({ error: "Vorgang konnte nicht ausgeführt werden" });
+    let detail = "";
+    try { detail = JSON.stringify(await apiRes.json()); } catch {}
+    console.error("Baserow row error:", apiRes.status, req.method, detail);
+    return res.status(502).json({ error: `Baserow ${apiRes.status}: ${detail || "unbekannter Fehler"}` });
   }
 
   const data = await apiRes.json();

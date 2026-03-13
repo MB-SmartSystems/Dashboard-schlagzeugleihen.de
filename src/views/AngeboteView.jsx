@@ -448,7 +448,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         Titel: `Beleg für ${produktName} hochladen`,
         Status: "Offen",
         Priorität: "Mittel",
-        Typ: "Beleg",
+        Typ: "Manuell",
         Quelle: "Automatisch",
         Verknüpfung_Instrument: [hauptproduktId],
       });
@@ -529,11 +529,11 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
 
   /* ── Grouping ── */
   const aktiv = fs.items.filter((a) =>
-    ["Offen", "Angenommen", "Zu Versenden", "Versendet"].includes(a.Status?.value)
+    ["Offen", "Zu Versenden", "Versendet"].includes(a.Status?.value)
   );
   const kundeAngenommen = fs.items.filter((a) => a.Status?.value === "Kunde Angenommen");
   const abgeschlossen = fs.items.filter((a) =>
-    ["Abgelehnt", "Abgelaufen", "Kunde Abgelehnt", "Abgeholt"].includes(a.Status?.value)
+    ["Angenommen", "Abgelehnt", "Abgelaufen", "Kunde Abgelehnt", "Abgeholt"].includes(a.Status?.value)
   );
 
   return (
@@ -624,7 +624,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
       {abgeschlossen.length > 0 && (
         <>
           <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">
-            Abgelehnt / Abgelaufen
+            Abgelehnt / Abgelaufen / Angenommen
           </div>
           <div className="opacity-50">
             {abgeschlossen.map((a) => (
