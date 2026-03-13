@@ -12,14 +12,14 @@ import { triggerWebhook, updateRow, createRow, TABLE_IDS } from "../api/baserow"
 
 function statusBadge(val) {
   switch (val) {
-    case "offen": return <Badge color="accent">Offen</Badge>;
-    case "angenommen": return <Badge color="blue">Angenommen</Badge>;
-    case "zu versenden": return <Badge color="yellow">Zu versenden</Badge>;
-    case "versendet": return <Badge color="blue">Versendet</Badge>;
-    case "Kunde angenommen": return <Badge color="green">Kunde angenommen</Badge>;
-    case "abgelehnt": return <Badge color="red">Abgelehnt</Badge>;
-    case "Kunde abgelehnt": return <Badge color="red">Kunde abgelehnt</Badge>;
-    case "abgelaufen": return <Badge color="gray">Abgelaufen</Badge>;
+    case "Offen": return <Badge color="accent">Offen</Badge>;
+    case "Angenommen": return <Badge color="blue">Angenommen</Badge>;
+    case "Zu Versenden": return <Badge color="yellow">Zu versenden</Badge>;
+    case "Versendet": return <Badge color="blue">Versendet</Badge>;
+    case "Kunde Angenommen": return <Badge color="green">Kunde angenommen</Badge>;
+    case "Abgelehnt": return <Badge color="red">Abgelehnt</Badge>;
+    case "Kunde Abgelehnt": return <Badge color="red">Kunde abgelehnt</Badge>;
+    case "Abgelaufen": return <Badge color="gray">Abgelaufen</Badge>;
     default: return <Badge color="gray">{val || "–"}</Badge>;
   }
 }
@@ -46,7 +46,7 @@ function AngebotCard({
   const isLoading = loadingId === angebot.Angebot_ID;
 
   // Check if versendet and expired
-  const isExpired = status === "versendet" && angebot.Gueltig_bis &&
+  const isExpired = status === "Versendet" && angebot.Gueltig_bis &&
     new Date(angebot.Gueltig_bis) < new Date(new Date().toDateString());
 
   return (
@@ -72,7 +72,7 @@ function AngebotCard({
       </div>
 
       {/* Anfragetext for offen status */}
-      {status === "offen" && angebot.Anfragetext && (
+      {status === "Offen" && angebot.Anfragetext && (
         <div className="mt-3 p-3 bg-gray-800/50 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">Anfragetext</div>
           <div className="text-sm text-gray-300 whitespace-pre-wrap">{angebot.Anfragetext}</div>
@@ -94,7 +94,7 @@ function AngebotCard({
         )}
 
         {/* Phase 1: offen → Annehmen / Ablehnen */}
-        {status === "offen" && (
+        {status === "Offen" && (
           <div className="flex gap-2 ml-auto">
             <button
               onClick={() => onAcceptInquiry(angebot)}
@@ -119,7 +119,7 @@ function AngebotCard({
         )}
 
         {/* Phase 3: zu versenden → Als versendet markieren */}
-        {status === "zu versenden" && (
+        {status === "Zu Versenden" && (
           <div className="ml-auto">
             <button
               onClick={() => onMarkSent(angebot)}
@@ -139,7 +139,7 @@ function AngebotCard({
         )}
 
         {/* Phase 5: Produkt bestellt (kein Instrument) | Abgeholt/Geliefert (Instrument vorhanden) */}
-        {status === "Kunde angenommen" && (onRechnungErstellen || onProduktBestellt) && (
+        {status === "Kunde Angenommen" && (onRechnungErstellen || onProduktBestellt) && (
           <div className="ml-auto">
             {!hatInstrument ? (
               <button
@@ -172,7 +172,7 @@ function AngebotCard({
         )}
 
         {/* Phase 4: versendet → Kunde angenommen / Kunde abgelehnt */}
-        {status === "versendet" && (
+        {status === "Versendet" && (
           <div className="flex gap-2 ml-auto">
             <button
               onClick={() => onCustomerAccepted(angebot)}
@@ -221,10 +221,46 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
   const [produktBestelltAngebot, setProduktBestelltAngebot] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [neueAnfrageOpen, setNeueAnfrageOpen] = useState(false);
+  const [neueAnfrage, setNeueAnfrage] = useState({
+    vorname: "", nachname: "", email: "", telefon: "",
+    produkt: "", laufzeit: "6", anfragetext: "",
+  });
 
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
   }, []);
+
+  const handleNeueAnfrage = async () => {
+    if (!neueAnfrage.vorname || !neueAnfrage.nachname || !neueAnfrage.email) {
+      showToast("Vorname, Nachname und E-Mail sind Pflichtfelder.", "error");
+      return;
+    }
+    setNeueAnfrageOpen(false);
+    setLoadingId("neue-anfrage");
+    try {
+      const kunde = await createRow(TABLE_IDS.kunden, {
+        Vorname: neueAnfrage.vorname,
+        Nachname: neueAnfrage.nachname,
+        EMail: neueAnfrage.email,
+        Telefon: neueAnfrage.telefon,
+      });
+      await createRow(TABLE_IDS.angebote, {
+        Status: "Offen",
+        Kunden_ID: [kunde.id],
+        Produkte: neueAnfrage.produkt,
+        Laufzeit_Monate: parseInt(neueAnfrage.laufzeit) || 6,
+        Anfragetext: neueAnfrage.anfragetext,
+      });
+      setNeueAnfrage({ vorname: "", nachname: "", email: "", telefon: "", produkt: "", laufzeit: "6", anfragetext: "" });
+      showToast("Neue Anfrage erfolgreich angelegt.");
+      reload();
+    } catch (e) {
+      showToast(`Fehler: ${e.message}`, "error");
+    } finally {
+      setLoadingId(null);
+    }
+  };
 
   /* Helper */
   const getKundeName = (angebot) => {
@@ -345,7 +381,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         const newMiete = await createRow(TABLE_IDS.mieten, {
           Kunde_ID: kundeId ? [kundeId] : [],
           Laufzeit_Monate: produktBestelltAngebot.Laufzeit_Monate || 6,
-          Status: "Bestellt",
+          Status: "Reserviert",
           Preis_monat_EUR: parseFloat(produktBestelltAngebot.Preis_monat_EUR) || 0,
           Kaution_EUR: parseFloat(produktBestelltAngebot.Kaution) || 0,
           Angebot_ID: [rowId],
@@ -407,6 +443,16 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         Instrument_ID: [hauptproduktId],
       });
 
+      // Beleg-Aufgabe erstellen
+      await createRow(TABLE_IDS.aufgaben, {
+        Titel: `Beleg für ${produktName} hochladen`,
+        Status: "Offen",
+        Priorität: "Mittel",
+        Typ: "Beleg",
+        Quelle: "Automatisch",
+        Verknüpfung_Instrument: [hauptproduktId],
+      });
+
       showToast(`Produkt + ${zubehörIds.length} Zubehör angelegt. Bereit für Abholung.`);
       reload();
     } catch (e) {
@@ -438,6 +484,17 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         }
       }
 
+      // Miete auf Aktiv setzen mit Mietbeginn
+      if (mietId) {
+        await updateRow(TABLE_IDS.mieten, mietId, {
+          Status: "Aktiv",
+          Mietbeginn: new Date().toISOString().slice(0, 10),
+          Preis_monat_EUR: rechnungAngebot.Preis_monat_EUR,
+          Kaution_EUR: rechnungAngebot.Kaution,
+          Laufzeit_Monate: rechnungAngebot.Laufzeit_Monate,
+        });
+      }
+
       await triggerWebhook("rechnung_erstellen", { miet_id: mietId });
       await updateRow(TABLE_IDS.angebote, rowId, { Status: 3918 });
       showToast(`Rechnung für Angebot #${angebotId} wird erstellt.`);
@@ -454,7 +511,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     filters: [
       {
         key: "status", label: "Status", accessor: (a) => a.Status?.value || "–",
-        options: ["offen", "zu versenden", "versendet", "angenommen", "abgelehnt", "abgelaufen", "Kunde angenommen", "Kunde abgelehnt"],
+        options: ["Offen", "Zu Versenden", "Versendet", "Angenommen", "Abgelehnt", "Abgelaufen", "Kunde Angenommen", "Kunde Abgelehnt"],
       },
     ],
     sorts: [
@@ -468,11 +525,11 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
 
   /* ── Grouping ── */
   const aktiv = fs.items.filter((a) =>
-    ["offen", "angenommen", "zu versenden", "versendet"].includes(a.Status?.value)
+    ["Offen", "Angenommen", "Zu Versenden", "Versendet"].includes(a.Status?.value)
   );
-  const kundeAngenommen = fs.items.filter((a) => a.Status?.value === "Kunde angenommen");
+  const kundeAngenommen = fs.items.filter((a) => a.Status?.value === "Kunde Angenommen");
   const abgeschlossen = fs.items.filter((a) =>
-    ["abgelehnt", "abgelaufen", "Kunde abgelehnt", "Abgeholt"].includes(a.Status?.value)
+    ["Abgelehnt", "Abgelaufen", "Kunde Abgelehnt", "Abgeholt"].includes(a.Status?.value)
   );
 
   return (
@@ -483,16 +540,26 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         <StatCard label="Abgeschlossen" value={abgeschlossen.length} color="red" />
       </div>
 
-      <FilterBar
-        filterConfigs={fs.filterConfigs}
-        activeFilters={fs.activeFilters}
-        onToggleFilter={fs.toggleFilter}
-        sortConfigs={fs.sortConfigs}
-        activeSort={fs.activeSort}
-        onSortChange={fs.setActiveSort}
-        hasActiveFilters={fs.hasActiveFilters}
-        onClearFilters={fs.clearFilters}
-      />
+      <div className="flex items-start gap-3 mb-0">
+        <div className="flex-1">
+          <FilterBar
+            filterConfigs={fs.filterConfigs}
+            activeFilters={fs.activeFilters}
+            onToggleFilter={fs.toggleFilter}
+            sortConfigs={fs.sortConfigs}
+            activeSort={fs.activeSort}
+            onSortChange={fs.setActiveSort}
+            hasActiveFilters={fs.hasActiveFilters}
+            onClearFilters={fs.clearFilters}
+          />
+        </div>
+        <button
+          onClick={() => setNeueAnfrageOpen(true)}
+          className="inline-flex items-center gap-1.5 bg-accent/15 text-accent border border-accent/30 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-accent/25 transition-all whitespace-nowrap mt-1"
+        >
+          + Neue Anfrage
+        </button>
+      </div>
 
       {/* Aktive Angebote */}
       <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3">
@@ -826,6 +893,50 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
             </p>
           </div>
         )}
+      </Modal>
+
+      {/* Modal: Neue Anfrage */}
+      <Modal
+        open={neueAnfrageOpen}
+        onClose={() => setNeueAnfrageOpen(false)}
+        title="Neue Anfrage erfassen"
+        footer={
+          <>
+            <button
+              onClick={() => setNeueAnfrageOpen(false)}
+              className="text-gray-400 text-sm px-4 py-2 rounded-lg hover:text-gray-200 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleNeueAnfrage}
+              className="bg-accent/15 text-accent border border-accent/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-accent/25 transition-all"
+            >
+              Anfrage anlegen
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <input value={neueAnfrage.vorname} onChange={(e) => setNeueAnfrage(p => ({...p, vorname: e.target.value}))} placeholder="Vorname *" className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent" />
+            <input value={neueAnfrage.nachname} onChange={(e) => setNeueAnfrage(p => ({...p, nachname: e.target.value}))} placeholder="Nachname *" className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <input value={neueAnfrage.email} onChange={(e) => setNeueAnfrage(p => ({...p, email: e.target.value}))} placeholder="E-Mail *" type="email" className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent" />
+            <input value={neueAnfrage.telefon} onChange={(e) => setNeueAnfrage(p => ({...p, telefon: e.target.value}))} placeholder="Telefon" className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent" />
+          </div>
+          <input value={neueAnfrage.produkt} onChange={(e) => setNeueAnfrage(p => ({...p, produkt: e.target.value}))} placeholder="Produkt (z.B. Roland TD-07DMK)" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent" />
+          <div className="grid grid-cols-2 gap-3">
+            <select value={neueAnfrage.laufzeit} onChange={(e) => setNeueAnfrage(p => ({...p, laufzeit: e.target.value}))} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-accent">
+              <option value="3">3 Monate</option>
+              <option value="6">6 Monate</option>
+              <option value="12">12 Monate</option>
+              <option value="24">24 Monate</option>
+            </select>
+          </div>
+          <textarea value={neueAnfrage.anfragetext} onChange={(e) => setNeueAnfrage(p => ({...p, anfragetext: e.target.value}))} placeholder="Anfragetext / Notizen" rows={3} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent resize-none" />
+        </div>
       </Modal>
 
       {/* Toast */}

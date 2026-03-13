@@ -107,7 +107,7 @@ export default function DashboardLayout() {
 
     switch (activeTab) {
       case "aufgaben": return <AufgabenView data={data} reload={reload} setActiveTab={setActiveTab} navigateTo={navigateTo} />;
-      case "mieten": return <MietenView data={data} navigateTo={navigateTo} />;
+      case "mieten": return <MietenView data={data} reload={reload} navigateTo={navigateTo} />;
       case "instrumente": return <InstrumenteView data={data} reload={reload} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
       case "kunden": return <KundenView data={data} reload={reload} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
       case "angebote": return <AngeboteView data={data} reload={reload} reloadAufgaben={reloadAufgaben} selectedId={selectedId} onSelectedClear={() => setSelectedId(null)} />;
