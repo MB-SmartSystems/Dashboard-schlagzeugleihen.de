@@ -486,13 +486,17 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
 
       // Miete auf Aktiv setzen mit Mietbeginn
       if (mietId) {
-        await updateRow(TABLE_IDS.mieten, mietId, {
+        const existingMiete = data.mieten.find((m) => m.id === mietId);
+        const mietUpdate = {
           Status: "Aktiv",
-          Mietbeginn: new Date().toISOString().slice(0, 10),
           Preis_monat_EUR: rechnungAngebot.Preis_monat_EUR,
           Kaution_EUR: rechnungAngebot.Kaution,
           Laufzeit_Monate: rechnungAngebot.Laufzeit_Monate,
-        });
+        };
+        if (!existingMiete?.Mietbeginn) {
+          mietUpdate.Mietbeginn = new Date().toISOString().slice(0, 10);
+        }
+        await updateRow(TABLE_IDS.mieten, mietId, mietUpdate);
       }
 
       await triggerWebhook("rechnung_erstellen", { miet_id: mietId });

@@ -9,9 +9,10 @@ import { formatDate, formatEuro } from "../utils/format";
 function statusBadge(val) {
   switch (val) {
     case "Entwurf": return <Badge color="gray">Entwurf</Badge>;
-    case "gesendet": return <Badge color="blue">Gesendet</Badge>;
-    case "offen": return <Badge color="yellow">Offen</Badge>;
-    case "bezahlt": return <Badge color="green">Bezahlt</Badge>;
+    case "Gesendet": return <Badge color="blue">Gesendet</Badge>;
+    case "Offen": return <Badge color="yellow">Offen</Badge>;
+    case "Bezahlt": return <Badge color="green">Bezahlt</Badge>;
+    case "Überfällig": return <Badge color="red">Überfällig</Badge>;
     case "Dauerauftrag läuft": return <Badge color="green">Dauerauftrag</Badge>;
     default: return <Badge color="gray">{val || "–"}</Badge>;
   }
