@@ -44,7 +44,7 @@ function tabCount(key, data) {
       return data.kunden.length;
     case "angebote":
       return data.angebote.filter((a) =>
-        ["offen", "angenommen", "zu versenden", "versendet"].includes(a.Status?.value)
+        ["Offen", "Angenommen", "Versendet"].includes(a.Status?.value)
       ).length;
     case "rechnungen":
       return data.rechnungen.length;

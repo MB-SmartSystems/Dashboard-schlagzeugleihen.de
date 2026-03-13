@@ -82,7 +82,7 @@ function computeExpectedTasks(data) {
 
   /* ── Trigger 3: Angebot angenommen, kein passendes Instrument lagernd ── */
   angebote.forEach((a) => {
-    if (a.Status?.value !== "angenommen") return;
+    if (a.Status?.value !== "Angenommen") return;
     const hasMiete = (a.Mieten || []).length > 0 || mietAngebotIds.has(a.id);
     if (hasMiete) return;
 
@@ -166,7 +166,7 @@ function computeExpectedTasks(data) {
 
   /* ── Trigger 4: Offenes Angebot noch nicht versendet ── */
   angebote.forEach((a) => {
-    if (a.Status?.value !== "offen") return;
+    if (a.Status?.value !== "Offen") return;
     const kundeId = a.Kunden_ID?.[0]?.id || null;
     const kundeLink = kundeId ? { Verknüpfung_Kunde: [kundeId] } : {};
     expected.push({
@@ -191,7 +191,7 @@ function computeExpectedTasks(data) {
 
   /* ── Trigger 5: Versendetes Angebot ohne Reaktion ── */
   angebote.forEach((a) => {
-    if (a.Status?.value !== "versendet") return;
+    if (a.Status?.value !== "Versendet") return;
     const hasMiete = (a.Mieten || []).length > 0 || mietAngebotIds.has(a.id);
     if (hasMiete) return;
 

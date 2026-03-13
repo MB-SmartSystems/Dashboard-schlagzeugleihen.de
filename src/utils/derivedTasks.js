@@ -15,7 +15,7 @@ export function computeDerivedTasks(data) {
   });
 
   angebote.forEach((a) => {
-    if (a.Status?.value !== "angenommen") return;
+    if (a.Status?.value !== "Angenommen") return;
     // Check if any Miete is linked to this Angebot (regardless of status)
     const hasMiete = (a.Mieten || []).length > 0 || mietAngebotIds.has(a.id);
     if (hasMiete) return;
@@ -144,7 +144,7 @@ export function computeDerivedTasks(data) {
   /* ── Trigger 4: Offenes Angebot noch nicht versendet ── */
   angebote.forEach((a) => {
     const status = a.Status?.value;
-    if (status !== "offen") return;
+    if (status !== "Offen") return;
     const kunde = kundenMap[a.Kunden_ID?.[0]?.id];
     const kundeName = [kunde?.Vorname, kunde?.Nachname].filter(Boolean).join(" ") || "Unbekannt";
     tasks.push({
@@ -163,7 +163,7 @@ export function computeDerivedTasks(data) {
 
   /* ── Trigger 5: Versendetes Angebot ohne Reaktion ── */
   angebote.forEach((a) => {
-    if (a.Status?.value !== "versendet") return;
+    if (a.Status?.value !== "Versendet") return;
     const hasMiete = (a.Mieten || []).length > 0 || mietAngebotIds.has(a.id);
     if (hasMiete) return;
     const kunde = kundenMap[a.Kunden_ID?.[0]?.id];
