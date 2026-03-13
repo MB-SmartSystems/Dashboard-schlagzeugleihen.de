@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { Check, X, Send, FileText, Truck } from "lucide-react";
+import { Check, X, Send, FileText, Truck, Package } from "lucide-react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
@@ -30,6 +30,8 @@ function AngebotCard({
   onMarkSent,
   onCustomerAccepted, onCustomerRejected,
   onRechnungErstellen,
+  onProduktBestellt,
+  hatInstrument,
   loadingId,
   isHighlighted,
 }) {
@@ -136,21 +138,36 @@ function AngebotCard({
           </div>
         )}
 
-        {/* Phase 5: Kunde angenommen → Rechnung erstellen */}
-        {status === "Kunde angenommen" && onRechnungErstellen && (
+        {/* Phase 5: Produkt bestellt (kein Instrument) | Abgeholt/Geliefert (Instrument vorhanden) */}
+        {status === "Kunde angenommen" && (onRechnungErstellen || onProduktBestellt) && (
           <div className="ml-auto">
-            <button
-              onClick={() => onRechnungErstellen(angebot)}
-              disabled={isLoading}
-              className="inline-flex items-center gap-1.5 bg-orange-500/15 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-orange-500/25 transition-all disabled:opacity-50"
-            >
-              {isLoading ? (
-                <span className="w-3 h-3 border-2 border-orange-400/30 border-t-orange-400 rounded-full animate-spin" />
-              ) : (
-                <Truck className="w-3.5 h-3.5" />
-              )}
-              Abgeholt / Geliefert
-            </button>
+            {!hatInstrument ? (
+              <button
+                onClick={() => onProduktBestellt && onProduktBestellt(angebot)}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-yellow-500/25 transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="w-3 h-3 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                ) : (
+                  <Package className="w-3.5 h-3.5" />
+                )}
+                Produkt bestellt ▸
+              </button>
+            ) : (
+              <button
+                onClick={() => onRechnungErstellen && onRechnungErstellen(angebot)}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 bg-green-500/15 text-green-400 border border-green-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-green-500/25 transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="w-3 h-3 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" />
+                ) : (
+                  <Truck className="w-3.5 h-3.5" />
+                )}
+                Abgeholt / Geliefert ▸
+              </button>
+            )}
           </div>
         )}
 
@@ -201,6 +218,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
   const [customerAcceptedAngebot, setCustomerAcceptedAngebot] = useState(null);
   const [customerRejectedAngebot, setCustomerRejectedAngebot] = useState(null);
   const [rechnungAngebot, setRechnungAngebot] = useState(null);
+  const [produktBestelltAngebot, setProduktBestelltAngebot] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -312,7 +330,93 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     }
   };
 
-  /* ── Phase 5: Rechnung erstellen → (Miete anlegen wenn nötig) + Webhook + PATCH Status "Abgeholt" ── */
+  /* ── Phase 5A: Produkt bestellt → Instrument + Zubehör anlegen, Miete verknüpfen ── */
+  const handleProduktBestellt = async () => {
+    if (!produktBestelltAngebot) return;
+    const angebotId = produktBestelltAngebot.Angebot_ID;
+    const rowId = produktBestelltAngebot.id;
+    setProduktBestelltAngebot(null);
+    setLoadingId(angebotId);
+    try {
+      // 1. Miete erstellen falls nicht vorhanden
+      let mietId = produktBestelltAngebot.Mieten?.[0]?.id;
+      if (!mietId) {
+        const kundeId = produktBestelltAngebot.Kunden_ID?.[0]?.id;
+        const newMiete = await createRow(TABLE_IDS.mieten, {
+          Kunde_ID: kundeId ? [kundeId] : [],
+          Laufzeit_Monate: produktBestelltAngebot.Laufzeit_Monate || 6,
+          Status: "Bestellt",
+          Preis_monat_EUR: parseFloat(produktBestelltAngebot.Preis_monat_EUR) || 0,
+          Kaution_EUR: parseFloat(produktBestelltAngebot.Kaution) || 0,
+          Angebot_ID: [rowId],
+        });
+        mietId = newMiete.id;
+      }
+
+      // 2. Preismodell-Match
+      const produktName = (produktBestelltAngebot.Produkte || "").split(/[,\n]/)[0].trim();
+      const normStr = (s) => s.toLowerCase().replace(/[\s\-–—+&,.]/g, "");
+      const normProd = normStr(produktName).slice(0, 14);
+      const preismodell = data.preismodelle.find(
+        (pm) =>
+          pm.Aktiv?.value === "Ja" &&
+          pm.Kategorie?.value === "Hauptprodukt" &&
+          normStr(pm.Modellname || "").includes(normProd)
+      );
+      if (!preismodell) {
+        showToast(`Kein Preismodell für '${produktName}' gefunden`, "error");
+        setLoadingId(null);
+        return;
+      }
+
+      // 3. Hauptprodukt anlegen
+      const hauptprodukt = await createRow(TABLE_IDS.instrumente, {
+        Modellname: preismodell.Modellname,
+        "Zubehör_inklusive": preismodell.Zubehör || "",
+        Zustand: "Neu",
+        Verfügbar: "Lagernd",
+        Preismodell_ID: [preismodell.id],
+        Miet_ID: [mietId],
+      });
+      const hauptproduktId = hauptprodukt.id;
+
+      // 4. Zubehör anlegen
+      const zubehörItems = (preismodell.Zubehör || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const zubehörIds = [];
+      for (const name of zubehörItems) {
+        const z = await createRow(TABLE_IDS.instrumente, {
+          Modellname: name,
+          Zustand: "Neu",
+          Verfügbar: "Lagernd",
+        });
+        zubehörIds.push(z.id);
+      }
+
+      // 5. Hauptprodukt mit Zubehör verknüpfen
+      if (zubehörIds.length > 0) {
+        await updateRow(TABLE_IDS.instrumente, hauptproduktId, {
+          "Zugehörige_Teile": zubehörIds,
+        });
+      }
+
+      // 6. Miete mit Instrument verknüpfen
+      await updateRow(TABLE_IDS.mieten, mietId, {
+        Instrument_ID: [hauptproduktId],
+      });
+
+      showToast(`Produkt + ${zubehörIds.length} Zubehör angelegt. Bereit für Abholung.`);
+      reload();
+    } catch (e) {
+      showToast(`Fehler: ${e.message}`, "error");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  /* ── Phase 5B: Abgeholt/Geliefert → Instrument Vermietet + Webhook + PATCH Status "Abgeholt" ── */
   const handleRechnungErstellen = async () => {
     if (!rechnungAngebot) return;
     const angebotId = rechnungAngebot.Angebot_ID;
@@ -320,22 +424,18 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     setRechnungAngebot(null);
     setLoadingId(angebotId);
     try {
-      let mietId = rechnungAngebot.Mieten?.[0]?.id;
+      const mietId = rechnungAngebot.Mieten?.[0]?.id;
 
-      // Keine Miete vorhanden → jetzt erstellen
-      if (!mietId) {
-        const today = new Date().toISOString().slice(0, 10);
-        const kundeId = rechnungAngebot.Kunden_ID?.[0]?.id;
-        const newMiete = await createRow(TABLE_IDS.mieten, {
-          Kunde_ID: kundeId ? [kundeId] : [],
-          Mietbeginn: today,
-          Laufzeit_Monate: rechnungAngebot.Laufzeit_Monate || 6,
-          Status: "Aktiv",
-          Preis_monat_EUR: parseFloat(rechnungAngebot.Preis_monat_EUR) || 0,
-          Kaution_EUR: parseFloat(rechnungAngebot.Kaution) || 0,
-          Angebot_ID: [rowId],
-        });
-        mietId = newMiete.id;
+      // Hauptprodukt + Zubehör auf "Vermietet" setzen
+      const mieteRow = data.mieten.find((m) => m.id === mietId);
+      const hauptproduktId = mieteRow?.Instrument_ID?.[0]?.id;
+      if (hauptproduktId) {
+        await updateRow(TABLE_IDS.instrumente, hauptproduktId, { Verfügbar: "Vermietet" });
+        const hauptprodukt = data.instrumente.find((i) => i.id === hauptproduktId);
+        const zubehörIds = (hauptprodukt?.["Zugehörige_Teile"] || hauptprodukt?.Zugehoerige_Teile || []).map((z) => z.id);
+        for (const zId of zubehörIds) {
+          await updateRow(TABLE_IDS.instrumente, zId, { Verfügbar: "Vermietet" });
+        }
       }
 
       await triggerWebhook("rechnung_erstellen", { miet_id: mietId });
@@ -423,21 +523,29 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
           <div className="text-[0.8rem] text-gray-500 uppercase tracking-widest font-semibold mb-3 mt-5">
             Kunde angenommen
           </div>
-          {kundeAngenommen.map((a) => (
-            <AngebotCard
-              key={a.id}
-              angebot={a}
-              kunde={kundenMap[a.Kunden_ID?.[0]?.id]}
-              onAcceptInquiry={() => {}}
-              onRejectInquiry={() => {}}
-              onMarkSent={() => {}}
-              onCustomerAccepted={() => {}}
-              onCustomerRejected={() => {}}
-              onRechnungErstellen={setRechnungAngebot}
-              loadingId={loadingId}
-              isHighlighted={selectedId === a.id}
-            />
-          ))}
+          {kundeAngenommen.map((a) => {
+            const mieteRow = a.Mieten?.[0]?.id
+              ? data.mieten.find((m) => m.id === a.Mieten[0].id)
+              : null;
+            const hatInstrument = (mieteRow?.Instrument_ID?.length ?? 0) > 0;
+            return (
+              <AngebotCard
+                key={a.id}
+                angebot={a}
+                kunde={kundenMap[a.Kunden_ID?.[0]?.id]}
+                onAcceptInquiry={() => {}}
+                onRejectInquiry={() => {}}
+                onMarkSent={() => {}}
+                onCustomerAccepted={() => {}}
+                onCustomerRejected={() => {}}
+                onProduktBestellt={setProduktBestelltAngebot}
+                onRechnungErstellen={setRechnungAngebot}
+                hatInstrument={hatInstrument}
+                loadingId={loadingId}
+                isHighlighted={selectedId === a.id}
+              />
+            );
+          })}
         </>
       )}
 
@@ -650,11 +758,46 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         )}
       </Modal>
 
-      {/* ── Modal: Rechnung erstellen (Phase 5) ── */}
+      {/* ── Modal: Produkt bestellt (Phase 5A) ── */}
+      <Modal
+        open={!!produktBestelltAngebot}
+        onClose={() => setProduktBestelltAngebot(null)}
+        title="Produkt bestellen?"
+        footer={
+          <>
+            <button
+              onClick={() => setProduktBestelltAngebot(null)}
+              className="text-gray-400 text-sm px-4 py-2 rounded-lg hover:text-gray-200 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleProduktBestellt}
+              className="bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-yellow-500/25 transition-all inline-flex items-center gap-1.5"
+            >
+              <Package className="w-3.5 h-3.5" />Produkt anlegen
+            </button>
+          </>
+        }
+      >
+        {produktBestelltAngebot && (
+          <div className="text-sm text-gray-300 space-y-2">
+            <p>
+              Produkt für <span className="font-semibold">{getKundeName(produktBestelltAngebot)}</span> bestellen?
+            </p>
+            <p className="text-gray-500">{produktBestelltAngebot.Produkte}</p>
+            <p className="text-gray-500 text-xs">
+              Hauptprodukt + Zubehör werden angelegt (Lagernd). Sobald das Instrument eintrifft → &quot;Abgeholt/Geliefert&quot;.
+            </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Modal: Abgeholt/Geliefert (Phase 5B) ── */}
       <Modal
         open={!!rechnungAngebot}
         onClose={() => setRechnungAngebot(null)}
-        title="Rechnung erstellen?"
+        title="Abgeholt / Geliefert?"
         footer={
           <>
             <button
@@ -665,9 +808,9 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
             </button>
             <button
               onClick={handleRechnungErstellen}
-              className="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-orange-500/25 transition-all inline-flex items-center gap-1.5"
+              className="bg-green-500/15 text-green-400 border border-green-500/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-500/25 transition-all inline-flex items-center gap-1.5"
             >
-              <Truck className="w-3.5 h-3.5" />Rechnung erstellen & abschließen
+              <Truck className="w-3.5 h-3.5" />Abgeholt & Rechnung erstellen
             </button>
           </>
         }
@@ -675,12 +818,11 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         {rechnungAngebot && (
           <div className="text-sm text-gray-300 space-y-2">
             <p>
-              Instrument wurde abgeholt/geliefert für{" "}
-              <span className="font-semibold">{getKundeName(rechnungAngebot)}</span>?
+              Instrument an <span className="font-semibold">{getKundeName(rechnungAngebot)}</span> übergeben?
             </p>
             <p className="text-gray-500">Angebot #{rechnungAngebot.Angebot_ID} · {rechnungAngebot.Produkte}</p>
             <p className="text-gray-500 text-xs">
-              Der n8n-Workflow erstellt die Rechnung. Das Angebot wird als &quot;Abgeholt&quot; markiert und aus dieser Ansicht entfernt.
+              Instrument + Zubehör werden auf &quot;Vermietet&quot; gesetzt. Der n8n-Workflow erstellt die Rechnung. Das Angebot wird als &quot;Abgeholt&quot; markiert.
             </p>
           </div>
         )}

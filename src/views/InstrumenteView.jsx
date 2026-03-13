@@ -1,10 +1,13 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import StatCard from "../components/StatCard";
 import Badge from "../components/Badge";
 import DetailRow from "../components/DetailRow";
 import FilterBar from "../components/FilterBar";
+import Modal from "../components/Modal";
+import Toast from "../components/Toast";
 import { useFilterSort } from "../hooks/useFilterSort";
 import { formatEuro } from "../utils/format";
+import { createRow, TABLE_IDS } from "../api/baserow";
 
 function verfuegbarBadge(val) {
   switch (val) {
@@ -90,8 +93,51 @@ function InstrumentCard({ instr, isHighlighted, instrumenteMap }) {
   );
 }
 
-export default function InstrumenteView({ data, selectedId, onSelectedClear }) {
+export default function InstrumenteView({ data, reload, selectedId, onSelectedClear }) {
   const { instrumente, instrumenteMap } = data;
+
+  /* ── Preismodell Modal ── */
+  const [showPmModal, setShowPmModal] = useState(false);
+  const [pmModellname, setPmModellname] = useState("");
+  const [pmPreis, setPmPreis] = useState("");
+  const [pmKaution, setPmKaution] = useState("");
+  const [pmMietkauf, setPmMietkauf] = useState("");
+  const [pmZubehoer, setPmZubehoer] = useState("");
+  const [pmEinkauf, setPmEinkauf] = useState("");
+  const [pmKategorie, setPmKategorie] = useState("Hauptprodukt");
+  const [pmSaving, setPmSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((message, type = "success") => {
+    setToast({ message, type });
+  }, []);
+
+  const handlePmCreate = async () => {
+    if (!pmModellname.trim() || !pmPreis || !pmKaution) return;
+    setPmSaving(true);
+    try {
+      await createRow(TABLE_IDS.preismodelle, {
+        Modellname: pmModellname.trim(),
+        Preis_monat_EUR: parseFloat(pmPreis) || 0,
+        Kaution: parseFloat(pmKaution) || 0,
+        ...(pmMietkauf && { Mietkaufpreis: parseFloat(pmMietkauf) }),
+        ...(pmZubehoer.trim() && { "Zubehör": pmZubehoer.trim() }),
+        ...(pmEinkauf && { Einkauf: parseFloat(pmEinkauf) }),
+        Kategorie: pmKategorie,
+        Aktiv: "Ja",
+      });
+      setPmModellname(""); setPmPreis(""); setPmKaution("");
+      setPmMietkauf(""); setPmZubehoer(""); setPmEinkauf("");
+      setPmKategorie("Hauptprodukt");
+      setShowPmModal(false);
+      showToast(`Preismodell '${pmModellname.trim()}' erstellt.`);
+      if (reload) reload();
+    } catch (e) {
+      showToast(`Fehler: ${e.message}`, "error");
+    } finally {
+      setPmSaving(false);
+    }
+  };
 
   /* Clear selectedId after highlight */
   useEffect(() => {
@@ -144,10 +190,18 @@ export default function InstrumenteView({ data, selectedId, onSelectedClear }) {
 
   return (
     <div>
-      <div className="flex gap-3 mb-5 overflow-x-auto">
-        <StatCard label="Aktiv" value={aktivAll.length} color="white" />
-        <StatCard label="Vermietet" value={vermietet} color="red" />
-        <StatCard label="Lagernd" value={lagernd} color="green" />
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex gap-3 overflow-x-auto">
+          <StatCard label="Aktiv" value={aktivAll.length} color="white" />
+          <StatCard label="Vermietet" value={vermietet} color="red" />
+          <StatCard label="Lagernd" value={lagernd} color="green" />
+        </div>
+        <button
+          onClick={() => setShowPmModal(true)}
+          className="bg-accent/15 text-accent border border-accent/30 text-xs font-semibold px-3.5 py-1.5 rounded-lg hover:bg-accent/25 transition-all flex-shrink-0"
+        >
+          + Preismodell
+        </button>
       </div>
 
       <FilterBar
@@ -179,6 +233,113 @@ export default function InstrumenteView({ data, selectedId, onSelectedClear }) {
             {inaktiv.map((i) => <InstrumentCard key={i.id} instr={i} isHighlighted={selectedId === i.id} instrumenteMap={instrumenteMap} />)}
           </div>
         </>
+      )}
+
+      {/* ── Modal: Preismodell anlegen ── */}
+      <Modal
+        open={showPmModal}
+        onClose={() => setShowPmModal(false)}
+        title="Neues Preismodell"
+        footer={
+          <>
+            <button
+              onClick={() => setShowPmModal(false)}
+              className="text-gray-400 text-sm px-4 py-2 rounded-lg hover:text-gray-200 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handlePmCreate}
+              disabled={pmSaving || !pmModellname.trim() || !pmPreis || !pmKaution}
+              className="bg-accent/15 text-accent border border-accent/30 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-accent/25 transition-all disabled:opacity-50"
+            >
+              {pmSaving ? "Wird gespeichert..." : "Speichern"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Modellname *</label>
+            <input
+              type="text"
+              value={pmModellname}
+              onChange={(e) => setPmModellname(e.target.value)}
+              placeholder="z.B. Pearl Export 22 Zoll"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Preis/Monat (€) *</label>
+              <input
+                type="number"
+                value={pmPreis}
+                onChange={(e) => setPmPreis(e.target.value)}
+                placeholder="39"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Kaution (€) *</label>
+              <input
+                type="number"
+                value={pmKaution}
+                onChange={(e) => setPmKaution(e.target.value)}
+                placeholder="150"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Mietkaufpreis (€)</label>
+              <input
+                type="number"
+                value={pmMietkauf}
+                onChange={(e) => setPmMietkauf(e.target.value)}
+                placeholder="0"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Einkaufspreis (€)</label>
+              <input
+                type="number"
+                value={pmEinkauf}
+                onChange={(e) => setPmEinkauf(e.target.value)}
+                placeholder="0"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Zubehör inklusive (kommagetrennt)</label>
+            <textarea
+              value={pmZubehoer}
+              onChange={(e) => setPmZubehoer(e.target.value)}
+              placeholder="Beckenständer, Snareständer, Hocker"
+              rows={2}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-accent transition-colors resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Kategorie</label>
+            <select
+              value={pmKategorie}
+              onChange={(e) => setPmKategorie(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-gray-200 outline-none focus:border-accent transition-colors"
+            >
+              <option value="Hauptprodukt">Hauptprodukt</option>
+              <option value="Zubehör">Zubehör</option>
+              <option value="Kaufartikel">Kaufartikel</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </div>
   );
