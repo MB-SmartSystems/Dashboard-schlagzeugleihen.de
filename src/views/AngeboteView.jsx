@@ -80,7 +80,8 @@ function AngebotCard({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         <DetailRow label="Angebotsnr." value={angebot.Angebotsnummer || "–"} mono />
-        <DetailRow label="Datum" value={formatDate(angebot.Angebotsdatum)} />
+        <DetailRow label="Anfrage" value={formatDate(angebot.Anfragedatum)} />
+        <DetailRow label="Angebot" value={formatDate(angebot.Angebotsdatum)} />
         <DetailRow label="Gültig bis" value={formatDate(angebot.Gueltig_bis)} />
         <DetailRow label="Monatspreis" value={formatEuro(angebot.Preis_monat_EUR)} mono />
         <DetailRow label="Gesamt + Kaution" value={formatEuro(angebot.Gesamtpreis_mit_Kaution)} mono />
@@ -267,6 +268,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
         Produkte: neueAnfrage.produkt,
         Laufzeit_Monate: parseInt(neueAnfrage.laufzeit) || 6,
         Anfragetext: neueAnfrage.anfragetext,
+        Anfragedatum: new Date().toISOString().split("T")[0],
       });
       setNeueAnfrage({ vorname: "", nachname: "", email: "", telefon: "", produkt: "", laufzeit: "6", anfragetext: "" });
       showToast("Neue Anfrage erfolgreich angelegt.");
@@ -293,6 +295,9 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
     setLoadingId(angebotId);
     try {
       await triggerWebhook("angebot_erstellen", { angebot_id: angebotId });
+      await updateRow(TABLE_IDS.angebote, acceptInquiryAngebot.id, {
+        Angebotsdatum: new Date().toISOString().split("T")[0],
+      });
       showToast(`Anfrage #${angebotId} angenommen – PDF wird erstellt.`);
       reload();
     } catch (e) {
@@ -529,7 +534,7 @@ export default function AngeboteView({ data, reload, reloadAufgaben, selectedId,
       },
     ],
     sorts: [
-      { key: "datum", label: "Datum", compareFn: (a, b) => (b.Angebotsdatum || "").localeCompare(a.Angebotsdatum || "") },
+      { key: "datum", label: "Datum", compareFn: (a, b) => (b.Angebotsdatum || b.Anfragedatum || "").localeCompare(a.Angebotsdatum || a.Anfragedatum || "") },
       { key: "gueltig", label: "Gültig bis", compareFn: (a, b) => (a.Gueltig_bis || "9999").localeCompare(b.Gueltig_bis || "9999") },
       { key: "preis", label: "Monatspreis", compareFn: (a, b) => (parseFloat(b.Preis_monat_EUR) || 0) - (parseFloat(a.Preis_monat_EUR) || 0) },
     ],
